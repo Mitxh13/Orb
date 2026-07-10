@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orb — Build Console</title>
+<style>
+/* ============================= RESET ============================= */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+img,svg{display:block;max-width:100%}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:inherit}
+ul,ol{list-style:none}
+table{border-collapse:collapse;width:100%}
+
+/* ============================= TOKENS ============================= */
+:root{
+  --bg:#0D0F14;
+  --bg-raised:#151922;
+  --bg-raised-2:#1B212C;
+  --bg-inset:#0A0C10;
+  --line:#252B37;
+  --line-soft:#1A1F29;
+  --ink:#E8EAF0;
+  --ink-dim:#9AA2B4;
+  --ink-faint:#5B6272;
+
+  --gold:#E8B34C;
+  --gold-soft:rgba(232,179,76,.12);
+  --gold-dim:rgba(232,179,76,.35);
+
+  --mint:#48D0A0;
+  --mint-soft:rgba(72,208,160,.12);
+
+  --coral:#F0685C;
+  --coral-soft:rgba(240,104,92,.12);
+
+  --azure:#5B9DF0;
+  --azure-soft:rgba(91,157,240,.12);
+
+  --violet:#A184EE;
+  --violet-soft:rgba(161,132,238,.14);
+
+  --font-mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Mono','Roboto Mono',Consolas,monospace;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+
+  --r-sm:6px;--r-md:10px;--r-lg:16px;
+  --sidebar-w:248px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+}
+
+/* ============================= BASE ============================= */
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:14.5px;
+  line-height:1.6;
+  min-height:100vh;
+  background-image:
+    radial-gradient(circle at 14% 8%, rgba(232,179,76,.06), transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(91,157,240,.05), transparent 45%),
+    radial-gradient(rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size:auto, auto, 22px 22px;
+  background-position:0 0,0 0,0 0;
+}
+::selection{background:var(--gold-dim);color:#1a1200}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-faint)}
+
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+
+code,.mono{font-family:var(--font-mono)}
+
+/* ============================= LAYOUT ============================= */
+.app{display:flex;min-height:100vh}
+
+/* ---- sidebar ---- */
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  background:linear-gradient(180deg,var(--bg-raised),var(--bg-inset) 90%);
+  border-right:1px solid var(--line);
+  position:fixed;top:0;left:0;bottom:0;
+  display:flex;flex-direction:column;
+  z-index:40;
+  transition:transform .28s ease;
+}
+.brand{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 18px 16px;
+  border-bottom:1px solid var(--line-soft);
+}
+.brand-mark{
+  width:34px;height:34px;border-radius:50%;
+  border:2px solid var(--gold);
+  position:relative;flex-shrink:0;
+  background:radial-gradient(circle at 35% 30%, rgba(232,179,76,.25), transparent 65%);
+}
+.brand-mark::after{
+  content:"";position:absolute;inset:7px;border-radius:50%;border:1.5px solid var(--gold-dim);
+}
+.brand-text .brand-name{font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:.04em;color:var(--ink)}
+.brand-text .brand-tag{font-size:10px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+
+.navlist{flex:1;overflow-y:auto;padding:14px 10px}
+.navgroup-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);padding:10px 10px 6px}
+.navitem{
+  display:flex;align-items:center;gap:10px;
+  width:100%;padding:9px 10px;border-radius:var(--r-sm);
+  font-size:12.8px;color:var(--ink-dim);
+  font-family:var(--font-mono);letter-spacing:.01em;
+  text-align:left;
+  opacity:0;transform:translateX(-6px);
+  animation:navin .4s ease forwards;
+}
+.navitem .nav-icon{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;flex-shrink:0}
+.navitem:hover{background:var(--bg-raised-2);color:var(--ink)}
+.navitem.active{background:var(--gold-soft);color:var(--gold)}
+.navitem.active .nav-icon{stroke:var(--gold)}
+@keyframes navin{to{opacity:1;transform:translateX(0)}}
+
+.sidebar-foot{padding:14px 18px 18px;border-top:1px solid var(--line-soft)}
+.foot-ring-row{display:flex;align-items:center;gap:10px}
+.foot-pct{font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--gold)}
+.foot-label{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;margin-top:1px}
+.foot-bar{height:4px;border-radius:99px;background:var(--line);margin-top:10px;overflow:hidden}
+.foot-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--mint));width:0%;transition:width .4s ease}
+
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:35}
+
+/* ---- main ---- */
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-width:0}
+
+.topbar{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;gap:14px;
+  padding:14px 28px;
+  background:rgba(13,15,20,.86);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.hamburger{display:none;width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--line);align-items:center;justify-content:center;flex-shrink:0}
+.hamburger svg{width:16px;height:16px;stroke:var(--ink-dim);fill:none;stroke-width:1.8}
+.crumb{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);letter-spacing:.04em}
+.crumb b{color:var(--ink-dim);font-weight:600}
+.topbar-spacer{flex:1}
+.topbar-next{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-dim);font-family:var(--font-mono)}
+.topbar-next b{color:var(--gold)}
+.mini-ring{width:30px;height:30px;flex-shrink:0}
+
+.content{padding:34px 28px 90px;max-width:1040px;width:100%;margin:0 auto}
+.page{display:none}
+.page.active{display:block;animation:fadein .35s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ============================= TYPE ============================= */
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.eyebrow::before{content:"";width:16px;height:1px;background:var(--gold-dim)}
+h1.page-title{font-family:var(--font-mono);font-size:clamp(1.5rem,3vw,2rem);font-weight:700;color:var(--ink);letter-spacing:-.01em;margin-bottom:8px}
+.page-sub{color:var(--ink-dim);font-size:14px;max-width:640px;margin-bottom:30px}
+h3.blk-title{font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:.03em;color:var(--ink);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.blk{margin-bottom:44px}
+p.txt{color:var(--ink-dim);font-size:13.8px;line-height:1.75;margin-bottom:12px}
+p.txt:last-child{margin-bottom:0}
+strong.ac{color:var(--ink);font-weight:600}
+
+/* ============================= HERO ============================= */
+.hero{padding:38px 0 8px}
+.hero-mark{width:70px;height:70px;border-radius:50%;border:2.5px solid var(--gold);margin-bottom:22px;position:relative;background:radial-gradient(circle at 35% 30%,rgba(232,179,76,.3),transparent 65%)}
+.hero-mark::after{content:"";position:absolute;inset:13px;border-radius:50%;border:1.5px solid var(--gold-dim)}
+.hero h1{font-family:var(--font-mono);font-size:clamp(2.4rem,6vw,3.6rem);font-weight:700;letter-spacing:-.02em;line-height:1}
+.hero h1 span{color:var(--gold)}
+.hero-tag{font-family:var(--font-mono);font-size:13px;color:var(--ink-faint);letter-spacing:.03em;margin-top:10px}
+.hero-lead{max-width:620px;color:var(--ink-dim);font-size:15px;line-height:1.75;margin-top:20px}
+
+/* ============================= CARDS / GRID ============================= */
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:28px}
+.stat-card{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 15px}
+.stat-card .sl{font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:5px}
+.stat-card .sv{font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--ink)}
+.stat-card .sv.g{color:var(--gold)}
+
+.card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.jump-card{
+  background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:16px 18px;text-align:left;transition:border-color .15s,transform .15s;
+}
+.jump-card:hover{border-color:var(--gold-dim);transform:translateY(-2px)}
+.jump-card .jc-num{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint)}
+.jump-card .jc-title{font-family:var(--font-mono);font-size:13.5px;font-weight:700;color:var(--ink);margin:5px 0 4px}
+.jump-card .jc-desc{font-size:12px;color:var(--ink-dim)}
+
+ul.bullets{display:flex;flex-direction:column;gap:9px}
+ul.bullets li{display:flex;gap:10px;font-size:13.5px;color:var(--ink-dim);align-items:flex-start}
+ul.bullets li .dot{width:5px;height:5px;border-radius:50%;background:var(--gold);margin-top:7px;flex-shrink:0}
+
+/* ============================= CHIPS / TAGS ============================= */
+.chip-row{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--font-mono);font-size:10.5px;padding:3px 8px;border-radius:5px;border:1px solid var(--line);color:var(--ink-dim)}
+.chip.be{background:var(--violet-soft);color:var(--violet);border-color:transparent}
+.chip.fe{background:var(--azure-soft);color:var(--azure);border-color:transparent}
+.chip.db{background:var(--mint-soft);color:var(--mint);border-color:transparent}
+.chip.sec{background:var(--coral-soft);color:var(--coral);border-color:transparent}
+.chip.dep{background:var(--gold-soft);color:var(--gold);border-color:transparent}
+.chip.misc{background:var(--line-soft);color:var(--ink-dim)}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:22px}
+.legend .lg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-faint);font-family:var(--font-mono)}
+.legend .dot{width:8px;height:8px;border-radius:2px}
+
+/* ============================= ROADMAP / PHASES ============================= */
+.phase{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:12px;background:var(--bg-raised)}
+.phase-hdr{display:flex;align-items:center;gap:12px;padding:15px 18px;cursor:pointer}
+.phase-hdr:hover{background:var(--bg-raised-2)}
+.phase-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:700;flex-shrink:0}
+.phase-info{flex:1;min-width:0}
+.phase-title{font-family:var(--font-mono);font-size:13.5px;font-weight:700;color:var(--ink)}
+.phase-sub{font-size:11.5px;color:var(--ink-faint);margin-top:2px}
+.phase-range{font-family:var(--font-mono);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;flex-shrink:0}
+.phase-pct{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);flex-shrink:0;width:36px;text-align:right}
+.chev{color:var(--ink-faint);flex-shrink:0;width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .2s}
+.phase.open .chev{transform:rotate(180deg)}
+.phase-body{display:none;border-top:1px solid var(--line-soft)}
+.phase.open .phase-body{display:block}
+
+.drow{display:flex;gap:0;border-bottom:1px solid var(--line-soft)}
+.drow:last-child{border-bottom:none}
+.drow.done{background:rgba(72,208,160,.035)}
+.dcheck-wrap{padding:15px 0 15px 18px;flex-shrink:0}
+.dcheck{
+  width:19px;height:19px;border-radius:5px;border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:background .15s,border-color .15s;
+}
+.dcheck svg{width:12px;height:12px;stroke:var(--bg);fill:none;stroke-width:3;opacity:0}
+.drow.done .dcheck{background:var(--mint);border-color:var(--mint)}
+.drow.done .dcheck svg{opacity:1}
+.dnum{font-family:var(--font-mono);font-size:10.5px;font-weight:700;color:var(--ink-faint);padding:15px 14px 15px 12px;flex-shrink:0;width:52px}
+.drow.done .dnum{color:var(--mint)}
+.dcontent{padding:14px 18px 15px 0;flex:1;min-width:0}
+.dfocus{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:7px}
+.drow.done .dfocus{color:var(--ink-dim);text-decoration:line-through;text-decoration-color:var(--line)}
+.deliv{font-size:12px;color:var(--ink-dim);display:flex;gap:6px;margin-top:8px;line-height:1.55}
+.deliv svg{width:13px;height:13px;stroke:var(--mint);fill:none;stroke-width:2;flex-shrink:0;margin-top:2px}
+.callout{display:inline-flex;align-items:flex-start;gap:6px;font-size:11px;padding:5px 9px;border-radius:6px;margin-top:9px;line-height:1.5}
+.callout.warn{background:var(--coral-soft);color:#ffb3ac}
+.callout.tip{background:var(--gold-soft);color:var(--gold)}
+.callout svg{width:13px;height:13px;flex-shrink:0;margin-top:1.5px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ============================= PROGRESS PAGE ============================= */
+.progress-top{display:flex;gap:32px;align-items:center;flex-wrap:wrap;background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px 30px;margin-bottom:30px}
+.dial-wrap{position:relative;width:150px;height:150px;flex-shrink:0}
+.dial-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial-track{fill:none;stroke:var(--line);stroke-width:9}
+.dial-fill{fill:none;stroke:var(--gold);stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.dial-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dial-pct{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--ink)}
+.dial-frac{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);margin-top:2px}
+.progress-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;flex:1;min-width:260px}
+.pstat{border-left:2px solid var(--line);padding-left:12px}
+.pstat .pl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint)}
+.pstat .pv{font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--ink);margin-top:3px}
+.pstat.hl{border-color:var(--gold)}
+.pstat.hl .pv{color:var(--gold)}
+
+.reset-row{display:flex;justify-content:flex-end;margin-bottom:14px}
+.btn-ghost{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);border:1px solid var(--line);padding:7px 12px;border-radius:var(--r-sm);display:flex;align-items:center;gap:6px}
+.btn-ghost:hover{color:var(--coral);border-color:var(--coral-soft);background:var(--coral-soft)}
+.btn-ghost svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+
+.pgroup{margin-bottom:16px;border:1px solid var(--line);border-radius:var(--r-md);padding:16px 18px;background:var(--bg-raised)}
+.pgroup-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.pgroup-hdr .ph-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pgroup-hdr .ph-title{font-family:var(--font-mono);font-size:12.5px;font-weight:700;color:var(--ink);flex:1}
+.pgroup-hdr .ph-frac{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint)}
+.pgroup-bar{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:12px}
+.pgroup-bar-fill{height:100%;border-radius:99px;transition:width .4s ease}
+.dchips{display:flex;flex-wrap:wrap;gap:7px}
+.dchip{
+  font-family:var(--font-mono);font-size:11px;padding:6px 10px;border-radius:7px;
+  border:1px solid var(--line);color:var(--ink-dim);display:flex;align-items:center;gap:6px;
+}
+.dchip .dc-box{width:12px;height:12px;border-radius:3px;border:1.3px solid var(--ink-faint);flex-shrink:0}
+.dchip.on{background:var(--mint-soft);border-color:transparent;color:var(--mint)}
+.dchip.on .dc-box{background:var(--mint);border-color:var(--mint)}
+
+.persist-note{display:flex;gap:9px;font-size:11.5px;color:var(--ink-faint);background:var(--bg-inset);border:1px dashed var(--line);border-radius:var(--r-md);padding:12px 14px;margin-top:20px;line-height:1.6}
+.persist-note svg{width:15px;height:15px;stroke:var(--ink-faint);fill:none;stroke-width:1.8;flex-shrink:0;margin-top:1px}
+
+/* ============================= ARCHITECTURE DIAGRAMS ============================= */
+.flow{display:flex;flex-direction:column;align-items:center;gap:0;margin:20px 0 8px}
+.flow-box{
+  width:100%;max-width:480px;background:var(--bg-raised);border:1px solid var(--line);
+  border-radius:var(--r-md);padding:16px 20px;text-align:center;
+}
+.flow-box.acc{border-color:var(--gold-dim);background:var(--gold-soft)}
+.flow-box .fb-title{font-family:var(--font-mono);font-weight:700;font-size:13.5px;color:var(--ink)}
+.flow-box .fb-sub{font-size:11px;color:var(--ink-faint);margin-top:3px}
+.flow-inner{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)}
+.flow-inner span{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-dim);background:var(--bg-inset);padding:4px 8px;border-radius:5px}
+.flow-arrow{display:flex;flex-direction:column;align-items:center;padding:8px 0;color:var(--ink-faint)}
+.flow-arrow svg{width:16px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.flow-arrow .fa-label{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-faint);margin-top:2px;text-align:center}
+
+.steps{display:flex;flex-direction:column;margin:18px 0}
+.step{display:flex;gap:16px;position:relative;padding-bottom:22px}
+.step:last-child{padding-bottom:0}
+.step::before{content:"";position:absolute;left:13px;top:28px;bottom:0;width:1px;background:var(--line)}
+.step:last-child::before{display:none}
+.step-num{width:27px;height:27px;border-radius:50%;background:var(--bg-raised-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--gold);flex-shrink:0;z-index:1}
+.step-body{padding-top:3px}
+.step-title{font-size:13px;color:var(--ink);font-weight:600}
+.step-sub{font-size:12px;color:var(--ink-faint);margin-top:2px}
+
+.critical-box{border:1px solid var(--coral-soft);background:var(--coral-soft);border-radius:var(--r-md);padding:14px 16px;display:flex;gap:10px;margin-top:16px}
+.critical-box svg{width:17px;height:17px;stroke:var(--coral);fill:none;stroke-width:2;flex-shrink:0;margin-top:1px}
+.critical-box .cb-title{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--coral);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.critical-box .cb-text{font-size:12.5px;color:#f0c9c5;line-height:1.6}
+
+.tree{background:var(--bg-inset);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 18px;font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);line-height:1.9;overflow-x:auto}
+.tree .c{color:var(--ink-faint)}
+.tree .hl{color:var(--gold)}
+.tree .fl{color:var(--azure)}
+
+/* ============================= TABLES ============================= */
+.tbl-wrap{border:1px solid var(--line);border-radius:var(--r-md);overflow-x:auto;background:var(--bg-raised)}
+table.dtbl{min-width:480px}
+table.dtbl th{text-align:left;font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);padding:11px 16px;background:var(--bg-raised-2);border-bottom:1px solid var(--line)}
+table.dtbl td{padding:11px 16px;font-size:12.5px;color:var(--ink-dim);border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.dtbl tr:last-child td{border-bottom:none}
+table.dtbl td.mono{font-family:var(--font-mono);color:var(--ink);font-size:12px}
+table.dtbl td b{color:var(--ink);font-weight:600}
+.tag-method{font-family:var(--font-mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
+.tag-method.get{background:var(--azure-soft);color:var(--azure)}
+.tag-method.post{background:var(--mint-soft);color:var(--mint)}
+.tag-method.put{background:var(--gold-soft);color:var(--gold)}
+
+/* ============================= CODE BLOCKS ============================= */
+.code{
+  background:var(--bg-inset);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:16px 18px;font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);
+  line-height:1.8;overflow-x:auto;white-space:pre;margin:10px 0 0;
+}
+.code .k{color:var(--violet)}
+.code .s{color:var(--mint)}
+.code .cm{color:var(--ink-faint);font-style:italic}
+.code .n{color:var(--gold)}
+
+/* ============================= SCHEMA / DB CARDS ============================= */
+.schema-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sb{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 18px}
+.sb .st{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--gold);margin-bottom:10px}
+.sr{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-family:var(--font-mono);font-size:11px;border-bottom:1px solid var(--line-soft)}
+.sr:last-of-type{border-bottom:none}
+.sk{color:var(--ink-dim)}
+.sv-col{display:flex;gap:5px;align-items:center;color:var(--ink-faint);text-align:right}
+.badge{font-family:var(--font-mono);font-size:8.5px;padding:1.5px 5px;border-radius:3px;flex-shrink:0}
+.badge.pk{background:var(--gold-soft);color:var(--gold)}
+.badge.fk{background:var(--coral-soft);color:var(--coral)}
+.snote{font-size:10.5px;color:var(--ink-faint);margin-top:10px;font-style:italic;border-top:1px solid var(--line-soft);padding-top:10px}
+
+/* ============================= CALLOUT BANNER ============================= */
+.banner{display:flex;gap:11px;background:var(--gold-soft);border:1px solid var(--gold-dim);border-radius:var(--r-md);padding:13px 16px;margin-bottom:26px}
+.banner svg{width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:2;flex-shrink:0;margin-top:1px}
+.banner .bt{font-size:12.5px;color:#f5dca3;line-height:1.6}
+.banner .bt b{color:var(--gold);font-weight:700}
+
+/* ============================= GOTCHA CARDS ============================= */
+.gotcha{border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg-raised);margin-bottom:12px;overflow:hidden}
+.gotcha-hdr{display:flex;gap:12px;align-items:flex-start;padding:15px 18px}
+.gotcha-n{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--coral);background:var(--coral-soft);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.gotcha-title{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.gotcha-text{font-size:12.3px;color:var(--ink-dim);line-height:1.65}
+
+/* ============================= CHECKLIST (dev guide) ============================= */
+.cklist{display:flex;flex-direction:column;gap:2px}
+.ckitem{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-sm)}
+.ckitem:hover{background:var(--bg-raised-2)}
+.ckbox{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ckbox svg{width:11px;height:11px;stroke:var(--bg);fill:none;stroke-width:3;opacity:0}
+.ckitem.on .ckbox{background:var(--mint);border-color:var(--mint)}
+.ckitem.on .ckbox svg{opacity:1}
+.ckitem .ckt{font-size:12.8px;color:var(--ink-dim)}
+.ckitem.on .ckt{color:var(--ink-faint);text-decoration:line-through}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+/* ============================= QA CARDS (talking points) ============================= */
+.qa{border-left:2px solid var(--azure);padding:4px 0 4px 14px;margin-bottom:16px}
+.qa .q{font-family:var(--font-mono);font-size:12px;color:var(--azure);margin-bottom:5px}
+.qa .a{font-size:12.8px;color:var(--ink-dim);line-height:1.65}
+
+/* ============================= RESPONSIVE ============================= */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-backdrop.show{display:block}
+  .main{margin-left:0}
+  .hamburger{display:flex}
+  .content{padding:24px 18px 80px}
+  .stat-strip{grid-template-columns:1fr 1fr}
+  .card-grid{grid-template-columns:1fr}
+  .schema-grid{grid-template-columns:1fr}
+  .progress-stats{grid-template-columns:1fr 1fr}
+  .two-col{grid-template-columns:1fr}
+  .progress-top{padding:22px}
+}
+@media(max-width:480px){
+  .stat-strip{grid-template-columns:1fr}
+  .topbar-next{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ ICON SPRITE ============ -->
+<svg style="display:none">
+<symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.4"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.4"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.4"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.4"/></symbol>
+<symbol id="i-roadmap" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><line x1="10" y1="6" x2="21" y2="6"/><circle cx="5" cy="12" r="2"/><line x1="10" y1="12" x2="21" y2="12"/><circle cx="5" cy="18" r="2"/><line x1="10" y1="18" x2="21" y2="18"/></symbol>
+<symbol id="i-progress" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-arch" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5"/></symbol>
+<symbol id="i-stack" viewBox="0 0 24 24"><path d="M12 3 20 7.5v9L12 21 4 16.5v-9L12 3Z"/><path d="M4 7.5 12 12l8-4.5"/><path d="M12 12v9"/></symbol>
+<symbol id="i-api" viewBox="0 0 24 24"><path d="M8 4c-2 0-3 1-3 3v3c0 1-1 2-2 2 1 0 2 1 2 2v3c0 2 1 3 3 3"/><path d="M16 4c2 0 3 1 3 3v3c0 1 1 2 2 2-1 0-2 1-2 2v3c0 2-1 3-3 3"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+<symbol id="i-sec" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></symbol>
+<symbol id="i-guide" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 16.5v-11Z"/><path d="M4 16.5A2.5 2.5 0 0 1 6.5 14H20"/></symbol>
+<symbol id="i-deploy" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/><path d="M5 19h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 22 20H2L12 3Z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5.9 1 1 1.7h5.2c.1-.7.4-1.2 1-1.7A6 6 0 0 0 12 3Z"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+<symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="0.6" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-arrow-down" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="20"/><path d="M7 15l5 5 5-5"/></symbol>
+</svg>
+
+<div class="app">
+
+  <div class="sidebar-backdrop" id="backdrop" onclick="closeSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-text">
+        <div class="brand-name">ORB</div>
+        <div class="brand-tag">Build Console</div>
+      </div>
+    </div>
+    <nav class="navlist" id="navlist">
+      <div class="navgroup-label">Plan</div>
+      <button class="navitem" data-target="overview" style="animation-delay:.02s"><svg class="nav-icon"><use href="#i-overview"/></svg>Overview</button>
+      <button class="navitem" data-target="roadmap" style="animation-delay:.06s"><svg class="nav-icon"><use href="#i-roadmap"/></svg>Roadmap</button>
+      <button class="navitem" data-target="progress" style="animation-delay:.10s"><svg class="nav-icon"><use href="#i-progress"/></svg>Progress</button>
+      <div class="navgroup-label">Reference</div>
+      <button class="navitem" data-target="architecture" style="animation-delay:.14s"><svg class="nav-icon"><use href="#i-arch"/></svg>Architecture</button>
+      <button class="navitem" data-target="stack" style="animation-delay:.18s"><svg class="nav-icon"><use href="#i-stack"/></svg>Tech Stack</button>
+      <button class="navitem" data-target="api" style="animation-delay:.22s"><svg class="nav-icon"><use href="#i-api"/></svg>API Reference</button>
+      <button class="navitem" data-target="database" style="animation-delay:.26s"><svg class="nav-icon"><use href="#i-db"/></svg>Database</button>
+      <button class="navitem" data-target="security" style="animation-delay:.30s"><svg class="nav-icon"><use href="#i-sec"/></svg>Security</button>
+      <div class="navgroup-label">Build</div>
+      <button class="navitem" data-target="devguide" style="animation-delay:.34s"><svg class="nav-icon"><use href="#i-guide"/></svg>Dev Guide</button>
+      <button class="navitem" data-target="deploy" style="animation-delay:.38s"><svg class="nav-icon"><use href="#i-deploy"/></svg>Deploy</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="foot-ring-row">
+        <div>
+          <div class="foot-pct" id="footPct">0%</div>
+          <div class="foot-label">Shipped</div>
+        </div>
+      </div>
+      <div class="foot-bar"><div class="foot-bar-fill" id="footBar"></div></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" onclick="openSidebar()"><svg><use href="#i-menu"/></svg></button>
+      <div class="crumb">ORB <span id="crumbSep">/</span> <b id="crumbTitle">Overview</b></div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-next" id="topbarNext"></div>
+      <svg class="mini-ring" viewBox="0 0 36 36" id="miniRing">
+        <circle class="dial-track" cx="18" cy="18" r="15" stroke-width="4"></circle>
+        <circle class="dial-fill" id="miniRingFill" cx="18" cy="18" r="15" stroke-width="4" transform="rotate(-90 18 18)"></circle>
+      </svg>
+    </header>
+
+    <div class="content">
+
+      <!-- ================= OVERVIEW ================= -->
+      <section class="page active" id="page-overview">
+        <div class="hero">
+          <div class="hero-mark"></div>
+          <h1><span>ORB</span></h1>
+          <div class="hero-tag">Virtual digital wallet · 21-day build console</div>
+          <p class="hero-lead">Orb is a full-stack digital wallet that simulates UPI/Paytm-style payments using a fictional currency called <strong class="ac">ORB</strong>. Every account opens with a seeded balance of <strong class="ac">₹1,00,000</strong> — no bank, no card, no real money ever touches this system. This console is where you track the build: what ships each day, how the pieces connect, and how far along you are.</p>
+        </div>
+
+        <div class="stat-strip">
+          <div class="stat-card"><div class="sl">Duration</div><div class="sv">21 days</div></div>
+          <div class="stat-card"><div class="sl">Seed balance</div><div class="sv g">₹1,00,000</div></div>
+          <div class="stat-card"><div class="sl">Currency</div><div class="sv">ORB (virtual)</div></div>
+          <div class="stat-card"><div class="sl">Platform</div><div class="sv">Web, responsive</div></div>
+        </div>
+
+        <div class="blk" style="margin-top:36px">
+          <h3 class="blk-title">What it does</h3>
+          <ul class="bullets">
+            <li><span class="dot"></span>Registers a user and auto-creates a wallet with ₹1,00,000, inside the same transaction as signup.</li>
+            <li><span class="dot"></span>Sends money peer-to-peer between wallets, atomically — a debit and a credit that either both happen or neither does.</li>
+            <li><span class="dot"></span>Generates a scannable QR code for a wallet, and reads one back via the camera to prefill a payment.</li>
+            <li><span class="dot"></span>Lists paginated transaction history, filterable by type and date, split into sent vs. received.</li>
+            <li><span class="dot"></span>Emails the receiver on every incoming transfer, without blocking the API response.</li>
+          </ul>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Design goals</h3>
+          <ul class="bullets">
+            <li><span class="dot"></span>Production-grade architecture — not a tutorial app.</li>
+            <li><span class="dot"></span>Atomic double-entry bookkeeping for every transfer.</li>
+            <li><span class="dot"></span>Mobile-first responsive UI — works on a phone browser and a laptop equally well.</li>
+            <li><span class="dot"></span>Stateless JWT authentication with an access + refresh token flow.</li>
+            <li><span class="dot"></span>Security-first: BCrypt everywhere, a separate transfer PIN, account lockouts, rate limiting.</li>
+          </ul>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Jump in</h3>
+          <div class="card-grid">
+            <button class="jump-card" onclick="go('roadmap')"><div class="jc-num">01</div><div class="jc-title">Roadmap</div><div class="jc-desc">The full 21-day, 6-phase build plan, day by day.</div></button>
+            <button class="jump-card" onclick="go('progress')"><div class="jc-num">02</div><div class="jc-title">Progress</div><div class="jc-desc">Check off days as you ship them, watch the dial fill.</div></button>
+            <button class="jump-card" onclick="go('architecture')"><div class="jc-num">03</div><div class="jc-title">Architecture</div><div class="jc-desc">How the three tiers talk, and the two flows that matter most.</div></button>
+            <button class="jump-card" onclick="go('api')"><div class="jc-num">04</div><div class="jc-title">API Reference</div><div class="jc-desc">Every endpoint, grouped by resource.</div></button>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Source</h3>
+          <p class="txt">Built with Java 17 + Spring Boot 3 on the back end, React 18 + Vite on the front end, PostgreSQL 15 underneath. Repo: <a href="https://github.com/Mitxh13/Orb" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline">github.com/Mitxh13/Orb</a></p>
+        </div>
+      </section>
+
+      <!-- ================= ROADMAP ================= -->
+      <section class="page" id="page-roadmap">
+        <div class="eyebrow">Plan</div>
+        <h1 class="page-title">Roadmap</h1>
+        <p class="page-sub">Six phases, twenty-one days. Each phase builds directly on the last, so build them in order. Tick a day off here or on the Progress page — they stay in sync.</p>
+
+        <div class="legend">
+          <span class="lg"><span class="dot" style="background:var(--violet)"></span>Backend</span>
+          <span class="lg"><span class="dot" style="background:var(--azure)"></span>Frontend</span>
+          <span class="lg"><span class="dot" style="background:var(--mint)"></span>Database</span>
+          <span class="lg"><span class="dot" style="background:var(--coral)"></span>Security</span>
+          <span class="lg"><span class="dot" style="background:var(--gold)"></span>Deploy / Test</span>
+        </div>
+
+        <div id="roadmapMount"></div>
+      </section>
+
+      <!-- ================= PROGRESS ================= -->
+      <section class="page" id="page-progress">
+        <div class="eyebrow">Plan</div>
+        <h1 class="page-title">Progress</h1>
+        <p class="page-sub">Check off each day as you ship it. Everything here updates live while this page stays open.</p>
+
+        <div class="progress-top">
+          <div class="dial-wrap">
+            <svg viewBox="0 0 120 120">
+              <circle class="dial-track" cx="60" cy="60" r="52"></circle>
+              <circle class="dial-fill" id="dialFill" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="dial-center">
+              <div class="dial-pct" id="dialPct">0%</div>
+              <div class="dial-frac" id="dialFrac">0 / 21 days</div>
+            </div>
+          </div>
+          <div class="progress-stats">
+            <div class="pstat"><div class="pl">Days shipped</div><div class="pv" id="statDone">0</div></div>
+            <div class="pstat"><div class="pl">Days left</div><div class="pv" id="statLeft">21</div></div>
+            <div class="pstat"><div class="pl">Phases complete</div><div class="pv" id="statPhases">0 / 6</div></div>
+            <div class="pstat hl"><div class="pl">Next up</div><div class="pv" id="statNext">Day 1</div></div>
+          </div>
+        </div>
+
+        <div class="reset-row">
+          <button class="btn-ghost" onclick="resetProgress()"><svg><use href="#i-reset"/></svg>Reset progress</button>
+        </div>
+
+        <div id="progressMount"></div>
+
+        <div class="persist-note">
+          <svg><use href="#i-note"/></svg>
+          <div>Progress is held in memory for this session, so it resets if this preview reloads. Once you download the file and open it in your own browser, tell Claude and it can wire up local storage so checked-off days are remembered every time you reopen it.</div>
+        </div>
+      </section>
+
+      <!-- ================= ARCHITECTURE ================= -->
+      <section class="page" id="page-architecture">
+        <div class="eyebrow">Reference</div>
+        <h1 class="page-title">Architecture</h1>
+        <p class="page-sub">Three tiers, one direction of truth: browser → API → database.</p>
+
+        <div class="blk">
+          <h3 class="blk-title">System layout</h3>
+          <div class="flow">
+            <div class="flow-box"><div class="fb-title">Browser — React SPA</div><div class="fb-sub">Served from Vercel's CDN</div></div>
+            <div class="flow-arrow"><svg><use href="#i-arrow-down"/></svg><div class="fa-label">HTTPS · REST/JSON<br>JWT Bearer token</div></div>
+            <div class="flow-box acc">
+              <div class="fb-title">Spring Boot API — Railway :8080</div>
+              <div class="fb-sub">Stateless, no server-side sessions</div>
+              <div class="flow-inner">
+                <span>Spring Security — JWT filter chain</span>
+                <span>Service layer — @Transactional boundaries</span>
+                <span>JPA / Hibernate — ORM</span>
+              </div>
+            </div>
+            <div class="flow-arrow"><svg><use href="#i-arrow-down"/></svg><div class="fa-label">JDBC</div></div>
+            <div class="flow-box"><div class="fb-title">PostgreSQL 15</div><div class="fb-sub">Railway-managed database</div></div>
+          </div>
+          <p class="txt" style="margin-top:18px">The frontend is a single-page app with no server rendering. It talks to the API purely over HTTPS — there's no server-side session or cookie anywhere. Every request carries its own signed JWT, so any API instance can serve any request.</p>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Authentication flow</h3>
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">User registers</div><div class="step-sub">POST /api/auth/register</div></div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Server creates User + Wallet</div><div class="step-sub">Same @Transactional — never one without the other</div></div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Server returns tokens</div><div class="step-sub">{ accessToken, refreshToken, user }</div></div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Frontend stores and attaches</div><div class="step-sub">Authorization: Bearer &lt;accessToken&gt; on every request</div></div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">Filter validates on every protected route</div><div class="step-sub">JwtAuthFilter, once per request</div></div></div>
+            <div class="step"><div class="step-num">6</div><div class="step-body"><div class="step-title">On 401, refresh</div><div class="step-sub">Frontend calls POST /api/auth/refresh</div></div></div>
+            <div class="step"><div class="step-num">7</div><div class="step-body"><div class="step-title">Silent retry</div><div class="step-sub">New accessToken retries the original request</div></div></div>
+          </div>
+          <p class="txt">Access tokens expire after 24 hours, refresh tokens after 7 days. The JWT secret needs to be at least 32 characters and live in an environment variable — never hardcoded in source.</p>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">P2P transfer flow — the critical path</h3>
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Validate JWT</div><div class="step-sub">Identify the sender</div></div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Validate the transfer PIN</div><div class="step-sub">BCrypt.matches against transfer_pin_hash</div></div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Look up the receiver</div><div class="step-sub">By wallet_tag</div></div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Guard: sender ≠ receiver</div><div class="step-sub">Self-transfer is rejected</div></div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">Guard: balance ≥ amount</div><div class="step-sub">Checked before the transaction opens</div></div></div>
+            <div class="step"><div class="step-num">6</div><div class="step-body"><div class="step-title">@Transactional block</div><div class="step-sub">Debit sender, credit receiver, insert transaction row — commit or full rollback</div></div></div>
+            <div class="step"><div class="step-num">7</div><div class="step-body"><div class="step-title">@Async email to receiver</div><div class="step-sub">Doesn't block the response</div></div></div>
+            <div class="step"><div class="step-num">8</div><div class="step-body"><div class="step-title">Return</div><div class="step-sub">{ success, referenceId, newBalance }</div></div></div>
+          </div>
+          <div class="critical-box">
+            <svg><use href="#i-warn"/></svg>
+            <div><div class="cb-title">Critical</div><div class="cb-text">@Transactional is non-negotiable on the transfer method. Without it, a crash between the debit and the credit leaves money in a partial state. Both sides succeed together, or both roll back.</div></div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Project structure</h3>
+          <div class="tree">Orb/
+├── src/main/java/com/orb/
+│   ├── <span class="fl">config/</span>      <span class="c">SecurityConfig · JwtConfig · CorsConfig · AsyncConfig</span>
+│   ├── <span class="fl">controller/</span>  <span class="c">AuthController · UserController · WalletController · TransactionController</span>
+│   ├── <span class="fl">dto/</span>         <span class="c">RegisterRequest · LoginResponse · SendRequest · WalletDTO</span>
+│   ├── <span class="fl">entity/</span>      <span class="c">User · Wallet · Transaction · Notification</span>
+│   ├── <span class="fl">exception/</span>   <span class="c">GlobalExceptionHandler · InsufficientBalanceException</span>
+│   ├── <span class="fl">repository/</span>  <span class="c">UserRepository · WalletRepository · ...</span>
+│   ├── <span class="fl">security/</span>    <span class="c">JwtAuthFilter · JwtUtil · UserDetailsServiceImpl</span>
+│   └── <span class="fl">service/</span>     <span class="c">AuthService · WalletService · TransactionService · NotificationService</span>
+├── src/main/resources/
+│   ├── application.yml
+│   └── <span class="fl">db/migration/</span> <span class="c">V1__create_users.sql  V2__create_wallets.sql ...</span>
+├── src/test/            <span class="c">JUnit 5 tests, run against H2</span>
+└── frontend/src/
+    ├── <span class="fl">api/</span>         <span class="c">Axios instance + per-feature API calls</span>
+    ├── <span class="fl">components/</span>  <span class="c">Navbar · BalanceCard · TransactionItem · QRModal</span>
+    ├── <span class="fl">hooks/</span>       <span class="c">useAuth · useWallet</span>
+    ├── <span class="fl">pages/</span>       <span class="c">Login · Register · Dashboard · Send · History · QR</span>
+    ├── <span class="fl">store/</span>       <span class="hl">useAuthStore · useWalletStore</span> <span class="c">(Zustand)</span>
+    └── <span class="fl">utils/</span>       <span class="c">formatCurrency · formatDate</span></div>
+        </div>
+      </section>
+
+      <!-- ================= TECH STACK ================= -->
+      <section class="page" id="page-stack">
+        <div class="eyebrow">Reference</div>
+        <h1 class="page-title">Tech Stack</h1>
+        <p class="page-sub">Every library in the project, and what it's there for.</p>
+
+        <div class="banner">
+          <svg><use href="#i-bulb"/></svg>
+          <div class="bt"><b>Docker</b> is listed for awareness only — you don't need it to build Orb. Install PostgreSQL directly on your machine. It becomes useful later if you want to ship the whole app as a container.</div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Backend — Java 17 · Spring Boot 3.x</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Library</th><th>Purpose</th></tr>
+            <tr><td class="mono"><b>Spring Boot 3.x</b></td><td>Core framework, auto-configuration, embedded Tomcat</td></tr>
+            <tr><td class="mono"><b>Spring Security</b></td><td>Auth filter chain, route protection, method-level @PreAuthorize</td></tr>
+            <tr><td class="mono">Spring Data JPA</td><td>Repository pattern, auto-generated queries</td></tr>
+            <tr><td class="mono">Hibernate ORM</td><td>Entity–table mapping, lazy loading</td></tr>
+            <tr><td class="mono">Flyway</td><td>Version-controlled database migrations</td></tr>
+            <tr><td class="mono">JJWT</td><td>JWT creation, signing, and validation</td></tr>
+            <tr><td class="mono">BCrypt</td><td>Password and transfer PIN hashing</td></tr>
+            <tr><td class="mono">ZXing</td><td>QR code generation — returns base64 PNG</td></tr>
+            <tr><td class="mono">JavaMail / SendGrid</td><td>Transactional email on incoming transfers</td></tr>
+            <tr><td class="mono">Bucket4j</td><td>Per-IP rate limiting</td></tr>
+            <tr><td class="mono">Lombok</td><td>Boilerplate reduction — @Getter, @Builder, @Slf4j</td></tr>
+            <tr><td class="mono">MapStruct</td><td>Compile-time entity ↔ DTO mapping</td></tr>
+            <tr><td class="mono">Swagger / OpenAPI 3</td><td>Interactive API documentation</td></tr>
+            <tr><td class="mono">SLF4J + Logback</td><td>Structured logging, sensitive fields scrubbed</td></tr>
+            <tr><td class="mono">JUnit 5 + Mockito</td><td>Unit and integration tests</td></tr>
+            <tr><td class="mono">H2</td><td>In-memory database — tests only</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Frontend — React 18 · Vite</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Library</th><th>Purpose</th></tr>
+            <tr><td class="mono"><b>React 18</b></td><td>UI component framework, concurrent features</td></tr>
+            <tr><td class="mono"><b>TailwindCSS</b></td><td>Utility-first CSS, mobile-first responsive layout</td></tr>
+            <tr><td class="mono">Vite</td><td>Dev server and production build tool</td></tr>
+            <tr><td class="mono">React Router v6</td><td>Client-side routing, protected route guards</td></tr>
+            <tr><td class="mono">Axios</td><td>HTTP client with JWT interceptors and auto-refresh</td></tr>
+            <tr><td class="mono">Zustand</td><td>Lightweight global state — user + wallet data</td></tr>
+            <tr><td class="mono">Recharts</td><td>Monthly spending bar chart on the dashboard</td></tr>
+            <tr><td class="mono">jsQR</td><td>Camera-based QR scanner, prefills the send form</td></tr>
+            <tr><td class="mono">React Hot Toast</td><td>Success and error notification toasts</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Infrastructure</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Service</th><th>Role</th><th>Cost</th></tr>
+            <tr><td class="mono"><b>Railway</b></td><td>Hosts the Spring Boot JAR and managed PostgreSQL</td><td>Free tier</td></tr>
+            <tr><td class="mono"><b>Vercel</b></td><td>Hosts the React production build via CDN</td><td>Free tier</td></tr>
+            <tr><td class="mono">GitHub Actions</td><td>CI pipeline — runs mvn test on every push to main</td><td>Free</td></tr>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- ================= API REFERENCE ================= -->
+      <section class="page" id="page-api">
+        <div class="eyebrow">Reference</div>
+        <h1 class="page-title">API Reference</h1>
+        <p class="page-sub">Base URL in development: http://localhost:8080. Full interactive docs live at /swagger-ui.html once the backend is running.</p>
+
+        <div class="blk">
+          <h3 class="blk-title">Response envelope</h3>
+          <p class="txt">Every response, success or error, uses the same shape.</p>
+          <div class="code"><span class="cm">// Success</span>
+{ <span class="k">"success"</span>: <span class="n">true</span>,  <span class="k">"message"</span>: <span class="s">"Transfer successful"</span>, <span class="k">"data"</span>: { ... } }
+
+<span class="cm">// Error</span>
+{ <span class="k">"success"</span>: <span class="n">false</span>, <span class="k">"message"</span>: <span class="s">"Insufficient balance"</span>, <span class="k">"data"</span>: <span class="n">null</span> }</div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Authentication</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+            <tr><td><span class="tag-method post">POST</span></td><td class="mono">/api/auth/register</td><td>None</td><td>Create account · auto-seeds ₹1,00,000 wallet</td></tr>
+            <tr><td><span class="tag-method post">POST</span></td><td class="mono">/api/auth/login</td><td>None</td><td>Authenticate · returns access + refresh tokens</td></tr>
+            <tr><td><span class="tag-method post">POST</span></td><td class="mono">/api/auth/refresh</td><td>None</td><td>Exchange refresh token for a new access token</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Users</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+            <tr><td><span class="tag-method get">GET</span></td><td class="mono">/api/users/me</td><td>JWT</td><td>Fetch own profile</td></tr>
+            <tr><td><span class="tag-method put">PUT</span></td><td class="mono">/api/users/me</td><td>JWT</td><td>Update full name</td></tr>
+            <tr><td><span class="tag-method get">GET</span></td><td class="mono">/api/users/search?username=</td><td>JWT</td><td>Search users, for send-money recipient</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Wallet</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+            <tr><td><span class="tag-method get">GET</span></td><td class="mono">/api/wallet/me</td><td>JWT</td><td>Returns balance, wallet tag, currency</td></tr>
+            <tr><td><span class="tag-method get">GET</span></td><td class="mono">/api/wallet/qr</td><td>JWT</td><td>Returns wallet QR as base64 PNG</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Transactions</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+            <tr><td><span class="tag-method post">POST</span></td><td class="mono">/api/transactions/send</td><td>JWT</td><td>Body: { receiverWalletTag, amount, pin, note }</td></tr>
+            <tr><td><span class="tag-method get">GET</span></td><td class="mono">/api/transactions?page=0&size=10</td><td>JWT</td><td>Paginated history, with filters</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">HTTP status codes</h3>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Code</th><th>When</th></tr>
+            <tr><td class="mono"><b>200</b></td><td>Success — GET, PUT</td></tr>
+            <tr><td class="mono"><b>201</b></td><td>Created — register, send money</td></tr>
+            <tr><td class="mono"><b>400</b></td><td>Validation error or bad request body</td></tr>
+            <tr><td class="mono"><b>401</b></td><td>Missing or expired JWT</td></tr>
+            <tr><td class="mono"><b>403</b></td><td>JWT valid but action not permitted</td></tr>
+            <tr><td class="mono"><b>404</b></td><td>Resource not found</td></tr>
+            <tr><td class="mono"><b>409</b></td><td>Duplicate email or username on register</td></tr>
+            <tr><td class="mono"><b>429</b></td><td>Rate limit exceeded</td></tr>
+            <tr><td class="mono"><b>500</b></td><td>Server error — check application logs</td></tr>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- ================= DATABASE ================= -->
+      <section class="page" id="page-database">
+        <div class="eyebrow">Reference</div>
+        <h1 class="page-title">Database</h1>
+        <p class="page-sub">PostgreSQL 15 · four tables.</p>
+
+        <div class="banner">
+          <svg><use href="#i-bulb"/></svg>
+          <div class="bt">All monetary values use <b>DECIMAL(15,2)</b>, never float or double. Balance seeds to 100000.00 via WalletService, inside the same transaction as user registration.</div>
+        </div>
+
+        <div class="schema-grid">
+          <div class="sb">
+            <div class="st">USERS</div>
+            <div class="sr"><span class="sk">id</span><span class="sv-col">UUID <span class="badge pk">PK</span></span></div>
+            <div class="sr"><span class="sk">email</span><span class="sv-col">VARCHAR UNIQUE NOT NULL</span></div>
+            <div class="sr"><span class="sk">username</span><span class="sv-col">VARCHAR UNIQUE NOT NULL</span></div>
+            <div class="sr"><span class="sk">password_hash</span><span class="sv-col">TEXT NOT NULL</span></div>
+            <div class="sr"><span class="sk">full_name</span><span class="sv-col">VARCHAR(200)</span></div>
+            <div class="sr"><span class="sk">failed_attempts</span><span class="sv-col">INT DEFAULT 0</span></div>
+            <div class="sr"><span class="sk">is_active</span><span class="sv-col">BOOLEAN DEFAULT true</span></div>
+            <div class="sr"><span class="sk">created_at</span><span class="sv-col">TIMESTAMP</span></div>
+          </div>
+          <div class="sb">
+            <div class="st">WALLETS</div>
+            <div class="sr"><span class="sk">id</span><span class="sv-col">UUID <span class="badge pk">PK</span></span></div>
+            <div class="sr"><span class="sk">user_id</span><span class="sv-col">UUID <span class="badge fk">FK→users</span></span></div>
+            <div class="sr"><span class="sk">balance</span><span class="sv-col">DECIMAL(15,2) DEFAULT 100000.00</span></div>
+            <div class="sr"><span class="sk">currency</span><span class="sv-col">VARCHAR DEFAULT 'ORB'</span></div>
+            <div class="sr"><span class="sk">wallet_tag</span><span class="sv-col">VARCHAR UNIQUE</span></div>
+            <div class="sr"><span class="sk">transfer_pin_hash</span><span class="sv-col">VARCHAR NOT NULL</span></div>
+            <div class="sr"><span class="sk">is_locked</span><span class="sv-col">BOOLEAN DEFAULT false</span></div>
+            <div class="sr"><span class="sk">created_at</span><span class="sv-col">TIMESTAMP</span></div>
+            <div class="snote">wallet_tag is a unique short handle, e.g. @rahul42.</div>
+          </div>
+          <div class="sb">
+            <div class="st">TRANSACTIONS</div>
+            <div class="sr"><span class="sk">id</span><span class="sv-col">UUID <span class="badge pk">PK</span></span></div>
+            <div class="sr"><span class="sk">sender_wallet_id</span><span class="sv-col">UUID <span class="badge fk">FK→wallets</span></span></div>
+            <div class="sr"><span class="sk">receiver_wallet_id</span><span class="sv-col">UUID <span class="badge fk">FK→wallets</span></span></div>
+            <div class="sr"><span class="sk">amount</span><span class="sv-col">DECIMAL(15,2) &gt; 0</span></div>
+            <div class="sr"><span class="sk">type</span><span class="sv-col">'TRANSFER'</span></div>
+            <div class="sr"><span class="sk">status</span><span class="sv-col">SUCCESS │ FAILED</span></div>
+            <div class="sr"><span class="sk">note</span><span class="sv-col">TEXT, nullable</span></div>
+            <div class="sr"><span class="sk">reference_id</span><span class="sv-col">VARCHAR UNIQUE</span></div>
+            <div class="sr"><span class="sk">created_at</span><span class="sv-col">TIMESTAMP</span></div>
+          </div>
+          <div class="sb">
+            <div class="st">NOTIFICATIONS</div>
+            <div class="sr"><span class="sk">id</span><span class="sv-col">UUID <span class="badge pk">PK</span></span></div>
+            <div class="sr"><span class="sk">user_id</span><span class="sv-col">UUID <span class="badge fk">FK→users</span></span></div>
+            <div class="sr"><span class="sk">type</span><span class="sv-col">TRANSFER │ SECURITY</span></div>
+            <div class="sr"><span class="sk">title</span><span class="sv-col">VARCHAR(200)</span></div>
+            <div class="sr"><span class="sk">message</span><span class="sv-col">TEXT</span></div>
+            <div class="sr"><span class="sk">is_read</span><span class="sv-col">BOOLEAN DEFAULT false</span></div>
+            <div class="sr"><span class="sk">created_at</span><span class="sv-col">TIMESTAMP</span></div>
+          </div>
+        </div>
+
+        <div class="blk" style="margin-top:30px">
+          <h3 class="blk-title">Flyway migration rules</h3>
+          <p class="txt">Always create new migration files in order. Never edit a file that has already run — Flyway tracks checksums and fails on startup if a past file changes.</p>
+          <div class="tree">db/migration/
+├── V1__create_users_table.sql
+├── V2__create_wallets_table.sql
+├── V3__create_transactions_table.sql
+└── V4__create_notifications_table.sql
+
+<span class="c">To add a column later, create a new file:</span>
+└── <span class="hl">V5__add_phone_to_users.sql</span></div>
+          <div class="critical-box">
+            <svg><use href="#i-warn"/></svg>
+            <div><div class="cb-title">Critical</div><div class="cb-text">Never modify V1–V4 after they've run once. Need a schema change? Create V5, V6, and so on.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SECURITY ================= -->
+      <section class="page" id="page-security">
+        <div class="eyebrow">Reference</div>
+        <h1 class="page-title">Security</h1>
+        <p class="page-sub">Measures in place across the stack.</p>
+
+        <div class="tbl-wrap"><table class="dtbl">
+          <tr><th>Area</th><th>Implementation</th></tr>
+          <tr><td class="mono"><b>Passwords</b></td><td>BCrypt hashed via Spring Security — never stored or logged in plain text</td></tr>
+          <tr><td class="mono"><b>Transfer PIN</b></td><td>Separate BCrypt hash, verified on every transfer, never returned by the API</td></tr>
+          <tr><td class="mono">JWT</td><td>Signed HS256 · 24h access token · 7d refresh token · secret ≥ 32 chars</td></tr>
+          <tr><td class="mono">Account lock</td><td>failed_attempts counter on User — locks after 5 consecutive failures</td></tr>
+          <tr><td class="mono">Rate limiting</td><td>Bucket4j — 20 requests/min per IP in production</td></tr>
+          <tr><td class="mono">CORS</td><td>Configured to allow only the Vercel frontend domain in production</td></tr>
+          <tr><td class="mono">Input validation</td><td>Spring @Valid on every request DTO — rejects malformed input at the controller</td></tr>
+          <tr><td class="mono">Logging</td><td>password_hash and pin_hash excluded from all log output</td></tr>
+          <tr><td class="mono">HTTPS</td><td>Enforced by Railway and Vercel in production</td></tr>
+        </table></div>
+
+        <div class="blk" style="margin-top:30px">
+          <h3 class="blk-title">More detail</h3>
+          <p class="txt">The implementation gotchas behind these rows — the transfer PIN check, the lockout counter, the CORS config — are worked through with code in the <a href="#" onclick="go('devguide');return false;" style="color:var(--gold);text-decoration:underline">Dev Guide</a>.</p>
+        </div>
+      </section>
+
+      <!-- ================= DEV GUIDE ================= -->
+      <section class="page" id="page-devguide">
+        <div class="eyebrow">Build</div>
+        <h1 class="page-title">Dev Guide</h1>
+        <p class="page-sub">The checklist to run every session, the eight things that will break the app if you miss them, and how to verify the whole flow.</p>
+
+        <div class="blk">
+          <h3 class="blk-title">Daily checklist</h3>
+          <div class="two-col">
+            <div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Before you start coding</div>
+              <div class="cklist" id="ckBefore"></div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Before you push to GitHub</div>
+              <div class="cklist" id="ckPush"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Eight things that will break your app</h3>
+          <div id="gotchaMount"></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Postman test order</h3>
+          <p class="txt">Create two users, A and B, and run this sequence — order matters.</p>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Step</th><th>Request</th><th>Verify</th></tr>
+            <tr><td class="mono">1</td><td class="mono">POST /api/auth/register</td><td>201 · JWT returned · copy the token</td></tr>
+            <tr><td class="mono">2</td><td class="mono">POST /api/auth/login</td><td>200 · JWT returned · confirms auth works</td></tr>
+            <tr><td class="mono">3</td><td class="mono">GET /api/users/me</td><td>200 · JWT filter working</td></tr>
+            <tr><td class="mono">4</td><td class="mono">GET /api/wallet/me</td><td>200 · balance = 100000.00 · tag present</td></tr>
+            <tr><td class="mono">5</td><td class="mono">GET /api/users/search?username=</td><td>200 · returns user B</td></tr>
+            <tr><td class="mono">6</td><td class="mono">POST /api/transactions/send</td><td>201 · A's balance drops, B's rises</td></tr>
+            <tr><td class="mono">7</td><td class="mono">GET /api/transactions</td><td>200 · appears in both users' history</td></tr>
+            <tr><td class="mono">8</td><td class="mono">GET /api/wallet/qr</td><td>200 · base64 PNG string returned</td></tr>
+            <tr><td class="mono">9</td><td class="mono">POST /api/auth/refresh</td><td>200 · new access token returned</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Talking points</h3>
+          <p class="txt" style="margin-bottom:16px">What to say when someone asks about a design decision.</p>
+          <div class="qa"><div class="q">@Transactional on transfers?</div><div class="a">The debit and credit either both succeed or both roll back. No partial state is possible, even on a crash mid-operation.</div></div>
+          <div class="qa"><div class="q">Wallet creation atomicity?</div><div class="a">The user row and wallet row are created in the same transaction — a user can't exist without a wallet.</div></div>
+          <div class="qa"><div class="q">Why DECIMAL, not float?</div><div class="a">DECIMAL(15,2) in Postgres and BigDecimal in Java. Floating-point math drifts, and that drift becomes real currency errors.</div></div>
+          <div class="qa"><div class="q">Why stateless JWT?</div><div class="a">Zero session state on the server. Any instance can serve any request — no sticky sessions needed to scale horizontally.</div></div>
+          <div class="qa"><div class="q">Why @Async for email?</div><div class="a">Notification emails run on a separate thread pool, so they never add latency to the response the user is waiting on.</div></div>
+          <div class="qa"><div class="q">Flyway over ddl-auto?</div><div class="a">Schema changes are version-controlled SQL files. In production, Hibernate shouldn't be guessing at the schema.</div></div>
+          <div class="qa"><div class="q">Mobile-first Tailwind?</div><div class="a">Base styles target mobile, then sm: and md: breakpoints add the larger-screen layout. The sidebar collapses to a bottom nav on small viewports.</div></div>
+          <div class="qa"><div class="q">Transfer PIN security?</div><div class="a">Stored as a separate BCrypt hash from the login password, required on every transfer — a compromised JWT alone can't move money.</div></div>
+        </div>
+      </section>
+
+      <!-- ================= DEPLOY ================= -->
+      <section class="page" id="page-deploy">
+        <div class="eyebrow">Build</div>
+        <h1 class="page-title">Deploy</h1>
+        <p class="page-sub">Local setup, environment variables, and shipping to Railway + Vercel.</p>
+
+        <div class="blk">
+          <h3 class="blk-title">Local setup</h3>
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-body">
+              <div class="step-title">Clone and create the database</div>
+              <div class="code">git clone https://github.com/Mitxh13/Orb.git
+cd Orb
+
+<span class="cm">-- in psql or pgAdmin</span>
+<span class="k">CREATE DATABASE</span> orb_db;</div>
+            </div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-body">
+              <div class="step-title">Configure application.yml</div>
+              <div class="code">spring:
+  datasource:
+    url:      jdbc:postgresql://localhost:5432/orb_db
+    username: YOUR_POSTGRES_USER
+    password: YOUR_POSTGRES_PASSWORD
+
+jwt:
+  secret:             YOUR_32_CHAR_MINIMUM_SECRET
+  expiration:         86400000      <span class="cm"># 24 hours</span>
+  refresh-expiration: 604800000     <span class="cm"># 7 days</span>
+
+mail:
+  host:     smtp.gmail.com
+  port:     587
+  username: your@gmail.com
+  password: your-gmail-app-password</div>
+            </div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-body">
+              <div class="step-title">Start the backend</div>
+              <div class="code">./mvnw spring-boot:run
+
+<span class="cm"># API:     http://localhost:8080</span>
+<span class="cm"># Swagger: http://localhost:8080/swagger-ui.html</span></div>
+            </div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-body">
+              <div class="step-title">Start the frontend</div>
+              <div class="code">cd frontend
+npm install
+
+<span class="cm"># frontend/.env</span>
+VITE_API_BASE_URL=http://localhost:8080
+
+npm run dev
+<span class="cm"># http://localhost:5173</span></div>
+            </div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-body">
+              <div class="step-title">Run tests</div>
+              <div class="code">./mvnw test
+<span class="cm"># uses H2 in-memory — no local Postgres needed for tests</span></div>
+            </div></div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Environment variables</h3>
+          <p class="txt">Keep this list local. Never commit real values to the repo.</p>
+          <div class="tbl-wrap"><table class="dtbl">
+            <tr><th>Key</th><th>Where it's set</th><th>Value / source</th></tr>
+            <tr><td class="mono"><b>DATABASE_URL</b></td><td>Railway</td><td>Auto-set by the Railway PostgreSQL plugin</td></tr>
+            <tr><td class="mono"><b>JWT_SECRET</b></td><td>Railway</td><td class="mono">openssl rand -base64 48</td></tr>
+            <tr><td class="mono">MAIL_USERNAME</td><td>Railway</td><td>your@gmail.com</td></tr>
+            <tr><td class="mono">MAIL_PASSWORD</td><td>Railway</td><td>Gmail App Password, not your account password</td></tr>
+            <tr><td class="mono">CORS_ALLOWED_ORIGIN</td><td>Railway</td><td>Your Vercel URL, e.g. https://orb-xxx.vercel.app</td></tr>
+            <tr><td class="mono">VITE_API_BASE_URL</td><td>Vercel</td><td>Your Railway API URL</td></tr>
+          </table></div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Ship it</h3>
+          <div class="two-col">
+            <div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Railway — backend + Postgres</div>
+              <div class="cklist" id="ckRailway"></div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Vercel — frontend</div>
+              <div class="cklist" id="ckVercel"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">GitHub Actions CI</h3>
+          <div class="code"><span class="cm"># .github/workflows/ci.yml</span>
+<span class="k">name:</span> CI
+<span class="k">on:</span> [push]
+<span class="k">jobs:</span>
+  <span class="k">test:</span>
+    <span class="k">runs-on:</span> ubuntu-latest
+    <span class="k">steps:</span>
+      - <span class="k">uses:</span> actions/checkout@v3
+      - <span class="k">uses:</span> actions/setup-java@v3
+        <span class="k">with:</span> { java-version: <span class="s">'17'</span>, distribution: <span class="s">'temurin'</span> }
+      - <span class="k">run:</span> ./mvnw test</div>
+        </div>
+
+        <div class="blk">
+          <h3 class="blk-title">Useful commands</h3>
+          <div class="code"><span class="cm"># Start backend</span>
+./mvnw spring-boot:run
+
+<span class="cm"># Run all tests</span>
+./mvnw test
+
+<span class="cm"># Run a single test class</span>
+./mvnw test -Dtest=TransactionServiceTest
+
+<span class="cm"># Build a production JAR</span>
+./mvnw clean package -DskipTests
+
+<span class="cm"># Check Flyway migration status</span>
+./mvnw flyway:info
+
+<span class="cm"># Frontend — install + dev</span>
+cd frontend && npm install && npm run dev
+
+<span class="cm"># Frontend — check the production build before deploy</span>
+cd frontend && npm run build && npm run preview
+
+<span class="cm"># Generate a JWT secret</span>
+openssl rand -base64 48</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+var PHASES = [
+  {id:1, title:"Project Setup & Architecture", sub:"Repo · Spring Boot scaffold · DB design · Global config", range:"Days 1–3", color:"violet", days:[1,2,3]},
+  {id:2, title:"Auth & User Service", sub:"Register · Login · JWT · Auto wallet creation with ₹1L seed", range:"Days 4–6", color:"violet", days:[4,5,6]},
+  {id:3, title:"Wallet & Transaction Engine", sub:"P2P transfers · QR payments · Transaction history", range:"Days 7–10", color:"mint", days:[7,8,9,10]},
+  {id:4, title:"Frontend — Responsive React App", sub:"Auth screens · Dashboard · Send money · QR · History", range:"Days 11–15", color:"azure", days:[11,12,13,14,15]},
+  {id:5, title:"Security & Notifications", sub:"Transfer PIN · Account lock · Email alerts · Rate limiting", range:"Days 16–18", color:"coral", days:[16,17,18]},
+  {id:6, title:"Testing + Deployment", sub:"Unit tests · Integration tests · CI · Live deploy · README", range:"Days 19–21", color:"gold", days:[19,20,21]}
+];
+
+var DAYS = [
+  {id:1, phase:1, title:"Scaffold the project", tags:[["Spring Initializr","be"],["Maven","be"],["application.yml","be"],["PostgreSQL local setup","db"],["GitHub repo + .gitignore","misc"]],
+    deliv:"Spring Boot runs on localhost:8080. Git repo initialized. Folder structure set: controller / service / repository / dto / entity / config."},
+  {id:2, phase:1, title:"Database design + JPA entities", tags:[["ERD diagram","db"],["Flyway migrations","db"],["JPA entities","be"],["Hibernate config","be"]],
+    deliv:"All 4 tables created via Flyway V1 migration. Entities mapped. DB connection verified through Spring logs."},
+  {id:3, phase:1, title:"Global config — the invisible glue", tags:[["API response wrapper","be"],["Global exception handler","be"],["Lombok + MapStruct","be"],["Swagger / OpenAPI","be"],["SLF4J logging","be"]],
+    deliv:"Swagger UI live at /swagger-ui.html. All errors return clean JSON. Custom ApiResponse<T> wrapper works."},
+  {id:4, phase:2, title:"Register + Login APIs", tags:[["POST /api/auth/register","be"],["POST /api/auth/login","be"],["BCrypt hashing","sec"],["Spring Security config","be"]],
+    deliv:"User registers successfully. Password stored as BCrypt hash. Login returns a JWT token. Tested in Postman."},
+  {id:5, phase:2, title:"JWT filter + auto wallet on signup", tags:[["JWT filter chain","sec"],["OncePerRequestFilter","be"],["WalletService.createDefault()","be"],["balance = 100000.00","db"],["@PreAuthorize","be"]],
+    deliv:"Every new user gets a wallet with ₹1,00,000 automatically. Protected routes return 401 without a valid JWT.",
+    warn:"Wallet creation must be inside the same @Transactional as the user save — or you get a user with no wallet."},
+  {id:6, phase:2, title:"User profile + refresh token", tags:[["GET /api/users/me","be"],["PUT /api/users/me","be"],["POST /api/auth/refresh","be"],["GET /api/users/search?username=","be"]],
+    deliv:"Profile fetch/update works. Username search ready for send-money. Refresh token extends the session."},
+  {id:7, phase:3, title:"Wallet APIs", tags:[["GET /api/wallet/me","be"],["WalletService","be"],["WalletDTO","be"],["wallet_tag auto-generate","be"]],
+    deliv:"Authenticated user can fetch their wallet balance, tag, and currency. wallet_tag is a unique short ID, e.g. @rahul42."},
+  {id:8, phase:3, title:"P2P transfer — the most critical feature", tags:[["POST /api/transactions/send","be"],["@Transactional","be"],["Debit + credit atomically","be"],["Balance check","be"],["Self-transfer guard","be"],["reference_id (UUID)","be"]],
+    deliv:"Money moves atomically. Any failure rolls back both sides. A reference ID is generated per transaction.",
+    warn:"@Transactional is non-negotiable here — skip it and money will vanish on any crash."},
+  {id:9, phase:3, title:"Transaction history API", tags:[["GET /api/transactions?page=0&size=10","be"],["Pageable","be"],["Filter by type / date","be"],["Sent vs received logic","be"]],
+    deliv:"Paginated transaction list returned. Each item shows sender, receiver, amount, status, timestamp."},
+  {id:10, phase:3, title:"QR generation + notification service", tags:[["GET /api/wallet/qr","be"],["ZXing library","be"],["Base64 PNG response","be"],["NotificationService stub","be"],["notifications table","db"]],
+    deliv:"QR endpoint returns a base64 image encoding wallet_tag + amount. Notification service skeleton in place."},
+  {id:11, phase:4, title:"React setup + auth screens", tags:[["Vite + React 18","fe"],["TailwindCSS","fe"],["React Router v6","fe"],["Axios + interceptors","fe"],["Login page","fe"],["Register page","fe"]],
+    deliv:"Login and register work end-to-end. JWT stored. Protected route redirects work. Responsive layout base done.",
+    tip:"Design mobile-first with Tailwind. Use sm: / md: breakpoints for the laptop layout."},
+  {id:12, phase:4, title:"Dashboard + balance card", tags:[["Balance card","fe"],["Wallet tag display","fe"],["Quick action buttons","fe"],["Zustand global state","fe"],["Navbar + sidebar","fe"]],
+    deliv:"Dashboard shows live balance and wallet tag. Sidebar collapses to bottom nav on mobile. Zustand stores user + wallet state."},
+  {id:13, phase:4, title:"Send money flow", tags:[["Recipient search input","fe"],["Amount input","fe"],["Note field","fe"],["PIN confirmation modal","fe"],["Toast success / error","fe"]],
+    deliv:"Full send-money flow works. User searches recipient, enters amount, confirms PIN, sees a toast. Balance updates immediately."},
+  {id:14, phase:4, title:"Transaction history + spending chart", tags:[["Transaction list","fe"],["Sent / received filter tabs","fe"],["Pagination","fe"],["Recharts bar chart","fe"],["Monthly spending view","fe"]],
+    deliv:"Transaction history renders with filters. Spending bar chart shows the last 6 months. Works on mobile and laptop."},
+  {id:15, phase:4, title:"QR page + notifications bell", tags:[["QR display page","fe"],["jsQR scanner (camera)","fe"],["Scan → prefill send form","fe"],["Bell icon","fe"],["Unread badge","fe"],["Notification list","fe"]],
+    deliv:"QR page shows the wallet QR. Camera scanner reads a QR and prefills the send form. Bell shows unread count."},
+  {id:16, phase:5, title:"Transfer PIN + account lock", tags:[["PIN hash at wallet creation","sec"],["PIN verified on every transfer","sec"],["Lock after 5 failed logins","sec"],["Input validation everywhere","sec"]],
+    deliv:"Transfers require a PIN. Account locks after 5 failed login attempts. All inputs validated with Spring @Valid."},
+  {id:17, phase:5, title:"Email notifications on transfer", tags:[["JavaMail / SendGrid","be"],["Email template (HTML)","be"],["Async @Async send","be"],["Save to notifications table","db"]],
+    deliv:"Receiver gets an email on every incoming transfer. Email sent async so it doesn't block the API response."},
+  {id:18, phase:5, title:"CORS + rate limiting + hardening", tags:[["CORS config for frontend URL","sec"],["Rate limiting (Bucket4j)","sec"],["HTTPS-ready config","sec"],["Sensitive data out of logs","sec"]],
+    deliv:"CORS allows only the Vercel frontend URL. Rate limiting blocks more than 20 requests/min per IP. No passwords in logs."},
+  {id:19, phase:6, title:"Unit + integration tests", tags:[["JUnit 5","misc"],["Mockito","misc"],["Spring Boot Test","misc"],["H2 in-memory for tests","misc"],["TransferService tests","misc"],["AuthService tests","misc"]],
+    deliv:"Transfer happy path, insufficient balance, and self-transfer tested. Auth tests cover register + login. ./mvnw test passes clean."},
+  {id:20, phase:6, title:"Deploy backend + frontend", tags:[["Railway (Spring Boot JAR)","dep"],["Vercel (React build)","dep"],["Environment variables","dep"],["PostgreSQL on Railway","dep"],["GitHub Actions CI","dep"]],
+    deliv:"Backend live on Railway with cloud PostgreSQL. Frontend on Vercel pointing to the Railway API URL. CI runs tests on every push.",
+    tip:"Railway + Vercel are both free-tier friendly — no credit card needed to start."},
+  {id:21, phase:6, title:"Final QA + README + polish", tags:[["Full Postman end-to-end flow","misc"],["Mobile browser test","misc"],["Laptop browser test","misc"],["README with setup steps","misc"],["API docs link in README","misc"]],
+    deliv:"Orb is live, tested on mobile + laptop browsers, and documented. Project complete."}
+];
+
+var CHECKLIST_BEFORE = ["Backend running on :8080? → ./mvnw spring-boot:run","Swagger reachable? → localhost:8080/swagger-ui.html","Frontend running on :5173? → npm run dev inside /frontend","Flyway migrations clean? Check the boot logs"];
+var CHECKLIST_PUSH = ["./mvnw test → all tests passing clean","No secrets or .env values in any committed file","No System.out.println or leftover debug logs","API changes reflected in Swagger / README"];
+var CHECKLIST_RAILWAY = ["Push code to GitHub","Create Railway project → connect the repo","Add PostgreSQL plugin → DATABASE_URL auto-set","Set JWT_SECRET, MAIL_USERNAME, MAIL_PASSWORD, CORS_ALLOWED_ORIGIN","Deploy → confirm Flyway migrations ran in the logs","Test /swagger-ui.html on the Railway URL"];
+var CHECKLIST_VERCEL = ["cd frontend && npm run build → zero errors locally","Connect Vercel to the repo, root dir /frontend","Add VITE_API_BASE_URL = your Railway URL","Deploy → test login on the live Vercel URL","Update CORS_ALLOWED_ORIGIN on Railway to match"];
+
+var GOTCHAS = [
+  {t:"Wallet creation must share the user's transaction", d:"If the write fails after the user is saved but before the wallet is created, you get a user with no wallet. Keep both in one @Transactional method."},
+  {t:"P2P transfers must use @Transactional", d:"Without it, a crash between the debit and the credit leaves the sender reduced and the receiver unchanged — money disappears. Non-negotiable."},
+  {t:"Never use double or float for money", d:"Floating-point math causes precision errors with currency. 100.10 as a double can become 100.09999999... Always use BigDecimal."},
+  {t:"Check the balance before the debit", d:"Check it before opening the @Transactional block, so it fails fast with a clean 400 instead of rolling back mid-transaction."},
+  {t:"Guard against self-transfers", d:"Sending to yourself debits and credits the same row — it wastes a DB transaction and creates a confusing history entry."},
+  {t:"Email must be @Async", d:"Without @Async, the JavaMail/SendGrid call blocks the HTTP response thread for 1–3 seconds on every transfer. Users notice the lag."},
+  {t:"CORS — allow only the Vercel URL in production", d:"Never use '*' for CORS in production; it breaks JWT Authorization headers. Set the exact origin and allowCredentials(true)."},
+  {t:"JWT filter — use OncePerRequestFilter", d:"Spring's filter chain can invoke a filter more than once per request in some configurations. OncePerRequestFilter guarantees exactly one execution."}
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+var state = { done: {} };           // { dayId: true }
+var ckState = { before:{}, push:{}, railway:{}, vercel:{} };
+var openPhases = { 1: true };       // { phaseId: true } — which roadmap accordions are open
+var TOTAL_DAYS = DAYS.length;
+
+/* ============================================================
+   RENDER: ROADMAP
+   ============================================================ */
+function renderRoadmap(){
+  var mount = document.getElementById('roadmapMount');
+  var html = '';
+  PHASES.forEach(function(ph, idx){
+    var phDays = DAYS.filter(function(d){ return d.phase === ph.id; });
+    var doneCount = phDays.filter(function(d){ return state.done[d.id]; }).length;
+    var pct = Math.round((doneCount/phDays.length)*100);
+    var openClass = openPhases[ph.id] ? ' open' : '';
+    html += '<div class="phase'+openClass+'" id="rph-'+ph.id+'">';
+    html += '  <div class="phase-hdr" onclick="togglePhase(\''+ph.id+'\',\'rph-\')">';
+    html += '    <div class="phase-num" style="background:var(--'+ph.color+'-soft);color:var(--'+ph.color+')">'+ph.id+'</div>';
+    html += '    <div class="phase-info"><div class="phase-title">'+ph.title+'</div><div class="phase-sub">'+ph.sub+'</div></div>';
+    html += '    <div class="phase-pct">'+pct+'%</div>';
+    html += '    <div class="phase-range" style="background:var(--'+ph.color+'-soft);color:var(--'+ph.color+')">'+ph.range+'</div>';
+    html += '    <svg class="chev"><use href="#i-chev"/></svg>';
+    html += '  </div>';
+    html += '  <div class="phase-body">';
+    phDays.forEach(function(d){
+      var isDone = !!state.done[d.id];
+      html += '<div class="drow'+(isDone?' done':'')+'" id="rrow-'+d.id+'">';
+      html += '  <div class="dcheck-wrap"><button class="dcheck" onclick="toggleDay('+d.id+')" aria-label="Mark day '+d.id+' complete"><svg><use href="#i-check"/></svg></button></div>';
+      html += '  <div class="dnum">DAY<br>'+d.id+'</div>';
+      html += '  <div class="dcontent">';
+      html += '    <div class="dfocus">'+d.title+'</div>';
+      html += '    <div class="chip-row">'+d.tags.map(function(t){ return '<span class="chip '+t[1]+'">'+t[0]+'</span>'; }).join('')+'</div>';
+      html += '    <div class="deliv"><svg><use href="#i-check"/></svg><span>'+d.deliv+'</span></div>';
+      if(d.warn){ html += '<div class="callout warn"><svg><use href="#i-warn"/></svg>'+d.warn+'</div>'; }
+      if(d.tip){ html += '<div class="callout tip"><svg><use href="#i-bulb"/></svg>'+d.tip+'</div>'; }
+      html += '  </div>';
+      html += '</div>';
+    });
+    html += '  </div>';
+    html += '</div>';
+  });
+  mount.innerHTML = html;
+}
+
+/* ============================================================
+   RENDER: PROGRESS
+   ============================================================ */
+function renderProgress(){
+  var mount = document.getElementById('progressMount');
+  var html = '';
+  PHASES.forEach(function(ph){
+    var phDays = DAYS.filter(function(d){ return d.phase === ph.id; });
+    var doneCount = phDays.filter(function(d){ return state.done[d.id]; }).length;
+    var pct = Math.round((doneCount/phDays.length)*100);
+    html += '<div class="pgroup">';
+    html += '  <div class="pgroup-hdr"><span class="ph-dot" style="background:var(--'+ph.color+')"></span><span class="ph-title">'+ph.title+'</span><span class="ph-frac">'+doneCount+' / '+phDays.length+'</span></div>';
+    html += '  <div class="pgroup-bar"><div class="pgroup-bar-fill" style="width:'+pct+'%;background:var(--'+ph.color+')"></div></div>';
+    html += '  <div class="dchips">';
+    phDays.forEach(function(d){
+      var on = !!state.done[d.id];
+      html += '<button class="dchip'+(on?' on':'')+'" onclick="toggleDay('+d.id+')" id="pchip-'+d.id+'"><span class="dc-box"></span>Day '+d.id+'</button>';
+    });
+    html += '  </div></div>';
+  });
+  mount.innerHTML = html;
+}
+
+/* ============================================================
+   PROGRESS MATH + GLOBAL UI SYNC
+   ============================================================ */
+function computeStats(){
+  var doneIds = Object.keys(state.done).filter(function(k){ return state.done[k]; }).map(Number);
+  var doneCount = doneIds.length;
+  var pct = Math.round((doneCount/TOTAL_DAYS)*100);
+  var phasesComplete = PHASES.filter(function(ph){
+    return DAYS.filter(function(d){ return d.phase===ph.id; }).every(function(d){ return state.done[d.id]; });
+  }).length;
+  var nextDay = null;
+  for(var i=0;i<DAYS.length;i++){ if(!state.done[DAYS[i].id]){ nextDay = DAYS[i]; break; } }
+  return {doneCount:doneCount, pct:pct, phasesComplete:phasesComplete, nextDay:nextDay};
+}
+
+function updateGlobalUI(){
+  var s = computeStats();
+  var circumference = 2*Math.PI*52;
+  var miniCirc = 2*Math.PI*15;
+
+  // dial
+  var dialFill = document.getElementById('dialFill');
+  dialFill.style.strokeDasharray = circumference;
+  dialFill.style.strokeDashoffset = circumference*(1-s.pct/100);
+  document.getElementById('dialPct').textContent = s.pct+'%';
+  document.getElementById('dialFrac').textContent = s.doneCount+' / '+TOTAL_DAYS+' days';
+
+  // mini ring in topbar
+  var miniFill = document.getElementById('miniRingFill');
+  miniFill.style.strokeDasharray = miniCirc;
+  miniFill.style.strokeDashoffset = miniCirc*(1-s.pct/100);
+
+  // sidebar foot
+  document.getElementById('footPct').textContent = s.pct+'%';
+  document.getElementById('footBar').style.width = s.pct+'%';
+
+  // stats row
+  document.getElementById('statDone').textContent = s.doneCount;
+  document.getElementById('statLeft').textContent = TOTAL_DAYS - s.doneCount;
+  document.getElementById('statPhases').textContent = s.phasesComplete+' / 6';
+  document.getElementById('statNext').textContent = s.nextDay ? ('Day '+s.nextDay.id) : 'All shipped';
+
+  // topbar next
+  var tn = document.getElementById('topbarNext');
+  tn.innerHTML = s.nextDay ? ('Next up: <b>Day '+s.nextDay.id+'</b> — '+s.nextDay.title) : '<b>All 21 days shipped</b>';
+}
+
+function toggleDay(id){
+  state.done[id] = !state.done[id];
+  renderRoadmap();
+  renderProgress();
+  updateGlobalUI();
+}
+
+function resetProgress(){
+  state.done = {};
+  renderRoadmap();
+  renderProgress();
+  updateGlobalUI();
+}
+
+function togglePhase(id, prefix){
+  openPhases[id] = !openPhases[id];
+  var el = document.getElementById(prefix+id);
+  if(el) el.classList.toggle('open');
+}
+
+/* ============================================================
+   RENDER: CHECKLISTS
+   ============================================================ */
+function renderChecklist(mountId, items, storeKey){
+  var mount = document.getElementById(mountId);
+  var html = '';
+  items.forEach(function(txt, i){
+    var on = !!ckState[storeKey][i];
+    html += '<div class="ckitem'+(on?' on':'')+'" onclick="toggleCk(\''+storeKey+'\','+i+',\''+mountId+'\')"><div class="ckbox"><svg><use href="#i-check"/></svg></div><div class="ckt">'+txt+'</div></div>';
+  });
+  mount.innerHTML = html;
+}
+function toggleCk(storeKey, i, mountId){
+  ckState[storeKey][i] = !ckState[storeKey][i];
+  var lists = { ckBefore:[CHECKLIST_BEFORE,'before'], ckPush:[CHECKLIST_PUSH,'push'], ckRailway:[CHECKLIST_RAILWAY,'railway'], ckVercel:[CHECKLIST_VERCEL,'vercel'] };
+  renderChecklist(mountId, lists[mountId][0], lists[mountId][1]);
+}
+
+/* ============================================================
+   RENDER: GOTCHAS
+   ============================================================ */
+function renderGotchas(){
+  var mount = document.getElementById('gotchaMount');
+  var html = '';
+  GOTCHAS.forEach(function(g,i){
+    html += '<div class="gotcha"><div class="gotcha-hdr"><div class="gotcha-n">'+(i+1)+'</div><div><div class="gotcha-title">'+g.t+'</div><div class="gotcha-text">'+g.d+'</div></div></div></div>';
+  });
+  mount.innerHTML = html;
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+var TITLES = { overview:"Overview", roadmap:"Roadmap", progress:"Progress", architecture:"Architecture", stack:"Tech Stack", api:"API Reference", database:"Database", security:"Security", devguide:"Dev Guide", deploy:"Deploy" };
+
+function go(target){
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.navitem').forEach(function(n){ n.classList.remove('active'); });
+  document.getElementById('page-'+target).classList.add('active');
+  var navBtn = document.querySelector('.navitem[data-target="'+target+'"]');
+  if(navBtn) navBtn.classList.add('active');
+  document.getElementById('crumbTitle').textContent = TITLES[target] || target;
+  document.querySelector('.content').scrollTop = 0;
+  window.scrollTo(0,0);
+  closeSidebar();
+}
+
+document.querySelectorAll('.navitem').forEach(function(btn){
+  btn.addEventListener('click', function(){ go(btn.getAttribute('data-target')); });
+});
+
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('backdrop').classList.add('show'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); }
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderRoadmap();
+renderProgress();
+renderChecklist('ckBefore', CHECKLIST_BEFORE, 'before');
+renderChecklist('ckPush', CHECKLIST_PUSH, 'push');
+renderChecklist('ckRailway', CHECKLIST_RAILWAY, 'railway');
+renderChecklist('ckVercel', CHECKLIST_VERCEL, 'vercel');
+renderGotchas();
+updateGlobalUI();
+go('overview');
+</script>
+</body>
+</html>
