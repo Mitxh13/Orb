@@ -597,7 +597,7 @@ table.dtbl td b{color:var(--ink);font-weight:600}
 
         <div class="persist-note">
           <svg><use href="#i-note"/></svg>
-          <div>Progress is held in memory for this session, so it resets if this preview reloads. Once you download the file and open it in your own browser, tell Claude and it can wire up local storage so checked-off days are remembered every time you reopen it.</div>
+          <div>Progress is saved to your browser's local storage automatically. Checked-off days, checklist ticks, and the section you were on are all restored next time you open this file — even after closing the browser.</div>
         </div>
       </section>
 
@@ -1197,6 +1197,30 @@ var state = { done: {} };           // { dayId: true }
 var ckState = { before:{}, push:{}, railway:{}, vercel:{} };
 var openPhases = { 1: true };       // { phaseId: true } — which roadmap accordions are open
 var TOTAL_DAYS = DAYS.length;
+var STORAGE_KEY = 'orb_console_v1';
+
+function saveToStorage(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      done: state.done,
+      ckState: ckState,
+      openPhases: openPhases,
+      lastPage: document.getElementById('crumbTitle') ? document.getElementById('crumbTitle').textContent : 'overview'
+    }));
+  } catch(e) {}
+}
+
+function loadFromStorage(){
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    var saved = JSON.parse(raw);
+    if(saved.done)       state.done      = saved.done;
+    if(saved.ckState)    ckState         = saved.ckState;
+    if(saved.openPhases) openPhases      = saved.openPhases;
+    return saved;
+  } catch(e) { return null; }
+}
 
 /* ============================================================
    RENDER: ROADMAP
@@ -1313,19 +1337,23 @@ function toggleDay(id){
   renderRoadmap();
   renderProgress();
   updateGlobalUI();
+  saveToStorage();
 }
 
 function resetProgress(){
+  if(!confirm('Reset all progress? This cannot be undone.')) return;
   state.done = {};
   renderRoadmap();
   renderProgress();
   updateGlobalUI();
+  saveToStorage();
 }
 
 function togglePhase(id, prefix){
   openPhases[id] = !openPhases[id];
   var el = document.getElementById(prefix+id);
   if(el) el.classList.toggle('open');
+  saveToStorage();
 }
 
 /* ============================================================
@@ -1344,6 +1372,7 @@ function toggleCk(storeKey, i, mountId){
   ckState[storeKey][i] = !ckState[storeKey][i];
   var lists = { ckBefore:[CHECKLIST_BEFORE,'before'], ckPush:[CHECKLIST_PUSH,'push'], ckRailway:[CHECKLIST_RAILWAY,'railway'], ckVercel:[CHECKLIST_VERCEL,'vercel'] };
   renderChecklist(mountId, lists[mountId][0], lists[mountId][1]);
+  saveToStorage();
 }
 
 /* ============================================================
@@ -1373,6 +1402,7 @@ function go(target){
   document.querySelector('.content').scrollTop = 0;
   window.scrollTo(0,0);
   closeSidebar();
+  try { localStorage.setItem(STORAGE_KEY+'_page', target); } catch(e) {}
 }
 
 document.querySelectorAll('.navitem').forEach(function(btn){
@@ -1385,6 +1415,7 @@ function closeSidebar(){ document.getElementById('sidebar').classList.remove('op
 /* ============================================================
    INIT
    ============================================================ */
+loadFromStorage();
 renderRoadmap();
 renderProgress();
 renderChecklist('ckBefore', CHECKLIST_BEFORE, 'before');
@@ -1393,7 +1424,9 @@ renderChecklist('ckRailway', CHECKLIST_RAILWAY, 'railway');
 renderChecklist('ckVercel', CHECKLIST_VERCEL, 'vercel');
 renderGotchas();
 updateGlobalUI();
-go('overview');
+var lastPage = 'overview';
+try { lastPage = localStorage.getItem(STORAGE_KEY+'_page') || 'overview'; } catch(e) {}
+go(lastPage);
 </script>
 </body>
 </html>
