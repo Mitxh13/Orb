@@ -1,0 +1,35 @@
+# === Java / Maven ===
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# === IDE ===
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# === Node / Frontend ===
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# === Environment / Secrets ===
+.env
+.env.local
+.env.*.local
+application-local.yml
+
+# === OS ===
+.DS_Store
+Thumbs.db
