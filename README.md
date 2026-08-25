@@ -8,12 +8,6 @@
 ```
 
 <div align="center">
-  <strong>A virtual digital wallet — send, receive & track money like UPI, but with fictional ORB currency.</strong>
-</div>
-
-<br/>
-
-<div align="center">
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
@@ -22,179 +16,127 @@
 [![JWT](https://img.shields.io/badge/JWT-Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)](https://jwt.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 
-[Live Demo](#) · [API Docs (Swagger)](#api-documentation) · [Report Bug](https://github.com/Mitxh13/Orb/issues) · [Request Feature](https://github.com/Mitxh13/Orb/issues)
-
 </div>
 
 ---
 
-## 💡 What is Orb?
+## Overview
 
-**Orb** is a full-stack, production-grade **peer-to-peer payment simulator** — think of it as a UPI/Paytm clone built entirely for learning and portfolio demonstration. Every new user is auto-credited **₹1,00,000** in virtual **ORB** currency. From there, you can send money to friends, scan QR codes, track your spending with interactive charts, and receive real-time notifications — all inside a responsive, mobile-first web interface.
-
-> **⚠️ Disclaimer:** No real money is ever involved. All balances and transactions are internal database operations using fictional "ORB" currency. This is a portfolio/learning project, not a fintech product.
-
-### Why Orb?
-
-I built Orb to prove I could architect a full-stack fintech application from scratch — not just the happy-path UI, but the hard parts that actually matter: **atomic transactions** that can never lose money, **cryptographic PIN verification**, **JWT auth with silent refresh**, and a codebase organized with the same discipline you'd find in a production payments service. Every design decision — from `BigDecimal` over `double` to `@Transactional` rollback guarantees — is a deliberate engineering choice, not a tutorial shortcut.
+**Orb** is a full-stack virtual digital wallet — a UPI/Paytm-style peer-to-peer payment simulator built on a fictional currency called **ORB**. Every user is auto-credited 1,00,000 virtual balance on signup, can send money to other users by wallet tag or QR code, view transaction history with spending charts, and receive email alerts on incoming transfers. No real money and no real payment rails are ever involved — every "transaction" is an internal database update. This is a portfolio and learning project built with production-grade architecture and discipline.
 
 ---
 
-## ✨ Features
+## Table of Contents
 
-<table>
-<tr>
-<td width="50%">
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Running Tests](#running-tests)
+- [Project Structure](#project-structure)
+- [Database Schema](#database-schema)
+- [API Reference](#api-reference)
+- [Authentication Flow](#authentication-flow)
+- [P2P Transfer Flow](#p2p-transfer-flow)
+- [Security](#security)
+- [Engineering Decisions](#engineering-decisions)
+- [Deployment](#deployment)
+- [License](#license)
 
-### 🔐 Authentication & Security
-- JWT access + refresh token flow with silent renewal
-- BCrypt password hashing (never stored plain)
-- Account auto-locks after 5 failed login attempts
-- Separate 4-digit transfer PIN (BCrypt hashed)
-- Per-IP rate limiting (Bucket4j — 20 req/min)
-- CORS locked to exact frontend origin
-- Sensitive fields scrubbed from all logs
+---
 
-</td>
-<td width="50%">
+## Features
 
-### 💸 Payments & Wallet
-- **₹1,00,000** auto-seeded wallet on every signup
-- Atomic P2P transfers — debit + credit in one `@Transactional`
-- Self-transfer guard, balance pre-check, PIN verification
-- Unique wallet tag (`@username42`) for easy discovery
-- Every transaction gets a UUID reference ID
-- Balance rollback guaranteed on any mid-transfer failure
+**Authentication and Security**
+- JWT access and refresh token flow with silent renewal
+- BCrypt password hashing (never stored or logged plain)
+- Separate 4-digit transfer PIN stored as a separate BCrypt hash
+- Account auto-lock after 5 consecutive failed login attempts
+- Per-IP rate limiting via Bucket4j (20 requests per minute)
+- CORS locked to exact frontend origin, never wildcard
+- Input validation on every request DTO
+- Sensitive fields scrubbed from all log output
 
-</td>
-</tr>
-<tr>
-<td width="50%">
+**Payments and Wallet**
+- 1,00,000 ORB auto-seeded wallet on every signup
+- Atomic P2P transfers — debit, credit, and transaction insert in one `@Transactional` block
+- Self-transfer guard and balance pre-check before any debit
+- Transfer PIN verified with `BCrypt.matches()` on every send
+- Unique wallet tag (e.g. `@rahul42`) for user discovery
+- UUID reference ID generated per transaction
 
-### 📊 History & Insights
-- Paginated transaction history with sent/received filters
-- Date range filtering for custom views
-- Monthly spending bar chart (Recharts)
+**History and Insights**
+- Paginated transaction history with sent and received filter tabs
+- Date range filtering
+- Monthly spending bar chart via Recharts
 - Transaction reference IDs for audit trail
 
-</td>
-<td width="50%">
-
-### 📱 User Experience
-- Mobile-first responsive design (works on any screen)
-- QR code generation (ZXing) + camera scanner (jsQR)
-- Real-time notification bell with unread badge
-- Async email alerts on incoming transfers
+**User Experience**
+- Mobile-first responsive design that works on any screen size
+- QR code generation via ZXing and camera-based scanning via jsQR
+- Notification bell with unread badge
+- Async email alerts on incoming transfers (never blocks the API response)
 - Toast notifications for all user actions
 
-</td>
-</tr>
-</table>
+---
+
+## Tech Stack
+
+**Backend — Java 17+ / Spring Boot 3.5**
+
+| Library | Purpose |
+|---|---|
+| Spring Boot 3.5 | Core framework, auto-config, embedded Tomcat |
+| Spring Security | Auth filter chain, route protection |
+| Spring Data JPA | Repository pattern |
+| Hibernate ORM | Entity-to-table mapping |
+| Flyway | Version-controlled SQL migrations |
+| PostgreSQL | Primary database (JDBC driver) |
+| JJWT | JWT creation, signing, validation |
+| BCrypt (Spring Security) | Password and transfer PIN hashing |
+| ZXing | QR code generation as base64 PNG |
+| JavaMail / SendGrid | Transactional email on incoming transfers |
+| Bucket4j | Per-IP rate limiting |
+| Lombok | Boilerplate reduction |
+| MapStruct | Compile-time entity-to-DTO mapping |
+| springdoc-openapi | Auto-generated API docs at `/swagger-ui.html` |
+| SLF4J + Logback | Structured logging |
+
+**Frontend — React 18 / Vite**
+
+| Library | Purpose |
+|---|---|
+| React 18 | UI framework |
+| Vite | Dev server and build tool |
+| TailwindCSS | Utility-first CSS, mobile-first |
+| React Router v6 | Client routing and protected route guards |
+| Axios | HTTP client with JWT interceptor and auto-refresh |
+| Zustand | Global state management |
+| Recharts | Monthly spending bar chart |
+| jsQR | Camera-based QR scanner |
+| React Hot Toast | Success and error toasts |
+
+**Testing**
+
+| Library | Purpose |
+|---|---|
+| JUnit 5 + Mockito | Unit and integration tests |
+| H2 | In-memory DB for tests only, running in PostgreSQL compatibility mode |
 
 ---
 
-## 🛠 Tech Stack
-
-<table>
-<tr>
-<th align="center">Backend</th>
-<th align="center">Frontend</th>
-<th align="center">Infrastructure</th>
-</tr>
-<tr>
-<td valign="top">
-
-**Java 17+** · **Spring Boot 3.5**
-- Spring Security (filter chain, JWT)
-- Spring Data JPA + Hibernate ORM
-- Flyway (version-controlled migrations)
-- PostgreSQL (JDBC driver)
-- JJWT (token signing + validation)
-- BCrypt (passwords & PINs)
-- ZXing (QR code → base64 PNG)
-- Bucket4j (rate limiting)
-- Lombok + MapStruct
-- springdoc-openapi (Swagger UI)
-- SLF4J + Logback (structured logging)
-- JavaMail / SendGrid (async email)
-
-</td>
-<td valign="top">
-
-**React 18** · **Vite**
-- TailwindCSS (utility-first, mobile-first)
-- React Router v6 (protected routes)
-- Axios (JWT interceptor + auto-refresh)
-- Zustand (global state management)
-- Recharts (spending visualizations)
-- jsQR (camera-based QR scanner)
-- React Hot Toast (notifications)
-
-</td>
-<td valign="top">
-
-**PostgreSQL 15+**
-- DECIMAL(15,2) for all money
-- UUID primary keys
-- Flyway-managed schema
-- H2 (test-only, PG mode)
-
-**CI/CD**
-- GitHub Actions (`mvn test` on push)
-- Railway (backend + managed DB)
-- Vercel (frontend CDN)
-
-</td>
-</tr>
-</table>
-
----
-
-## 🗄 Database Schema
-
-Four tables, all monetary values stored as `DECIMAL(15,2)` — never `float` or `double`.
-
-```
-┌──────────────────────────┐       ┌────────────────────────────────┐
-│         USERS            │       │           WALLETS              │
-├──────────────────────────┤       ├────────────────────────────────┤
-│ id          UUID    PK   │◄──┐   │ id              UUID      PK  │
-│ email       VARCHAR UQ   │   │   │ user_id         UUID      FK  │──┐
-│ username    VARCHAR UQ   │   │   │ balance         DECIMAL(15,2) │  │
-│ password_hash   TEXT     │   │   │ currency        VARCHAR  'ORB'│  │
-│ full_name   VARCHAR(200) │   │   │ wallet_tag      VARCHAR  UQ   │  │
-│ failed_attempts  INT     │   │   │ transfer_pin_hash VARCHAR     │  │
-│ is_active   BOOLEAN      │   │   │ is_locked       BOOLEAN       │  │
-│ created_at  TIMESTAMP    │   │   │ created_at      TIMESTAMP     │  │
-└──────────────────────────┘   │   └────────────────────────────────┘  │
-                               │                                       │
-┌──────────────────────────────┴───┐  ┌────────────────────────────────┘
-│        NOTIFICATIONS             │  │     TRANSACTIONS               │
-├──────────────────────────────────┤  ├────────────────────────────────┤
-│ id          UUID         PK      │  │ id                UUID    PK   │
-│ user_id     UUID         FK→users│  │ sender_wallet_id  UUID    FK   │
-│ type        VARCHAR(20)          │  │ receiver_wallet_id UUID   FK   │
-│ title       VARCHAR(200)         │  │ amount        DECIMAL(15,2)    │
-│ message     TEXT                 │  │ type          VARCHAR(20)      │
-│ is_read     BOOLEAN              │  │ status        VARCHAR(20)      │
-│ created_at  TIMESTAMP            │  │ note          TEXT             │
-└──────────────────────────────────┘  │ reference_id  VARCHAR(64) UQ  │
-                                      │ created_at    TIMESTAMP       │
-                                      └───────────────────────────────┘
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
+## Prerequisites
 
 | Tool | Version | Notes |
-|------|---------|-------|
-| Java | 17+ | `java -version` to verify |
-| Node.js | 18+ | `node -v` to verify |
-| PostgreSQL | 15+ | Running locally on port 5432 |
+|---|---|---|
+| Java | 17 or higher | `java -version` to verify |
+| Node.js | 18 or higher | `node -v` to verify |
+| PostgreSQL | 15 or higher | Running locally on port 5432 |
 | Maven | 3.9+ | Included via `mvnw` wrapper — no global install needed |
+
+---
+
+## Getting Started
 
 ### 1. Clone the repository
 
@@ -205,43 +147,53 @@ cd Orb
 
 ### 2. Create the database
 
+Connect to PostgreSQL and run:
+
 ```sql
--- Connect to PostgreSQL and run:
 CREATE DATABASE orb_db;
 ```
 
-### 3. Configure environment
+### 3. Configure the backend
 
-Create a file `src/main/resources/application-local.yml` (git-ignored) or set environment variables:
+The application reads credentials from environment variables with sensible defaults for local development. You can either set environment variables or create an untracked `application-local.yml`:
+
+**Option A — Environment variables:**
+
+```bash
+export DB_USERNAME=postgres
+export DB_PASSWORD=postgres
+export JWT_SECRET=YourSuperSecretKeyThatIsAtLeast32Characters
+```
+
+**Option B — Local config file** (git-ignored):
+
+Create `src/main/resources/application-local.yml`:
 
 ```yaml
-# application-local.yml (optional — overrides defaults)
 spring:
   datasource:
-    username: your_pg_user      # default: postgres
-    password: your_pg_password  # default: postgres
+    username: your_pg_user
+    password: your_pg_password
 
 jwt:
   secret: YourSuperSecretKeyThatIsAtLeast32Characters
-
-# Email (optional — app works without it, notifications just save to DB)
-spring:
-  mail:
-    username: your_email@gmail.com
-    password: your_app_password
 ```
 
-Or use environment variables: `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`.
+Email configuration is optional. The app works without it — notifications simply save to the database.
 
 ### 4. Run the backend
 
 ```bash
 ./mvnw spring-boot:run
-# Windows: .\mvnw.cmd spring-boot:run
 ```
 
-Backend starts at **http://localhost:8080**
-Flyway auto-creates all 4 tables on first boot.
+On Windows:
+
+```bash
+.\mvnw.cmd spring-boot:run
+```
+
+The backend starts at `http://localhost:8080`. Flyway automatically creates all 4 tables on first boot. Swagger UI is live at `http://localhost:8080/swagger-ui.html`.
 
 ### 5. Run the frontend
 
@@ -251,7 +203,8 @@ npm install
 ```
 
 Create `frontend/.env`:
-```env
+
+```
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
@@ -259,172 +212,230 @@ VITE_API_BASE_URL=http://localhost:8080
 npm run dev
 ```
 
-Frontend starts at **http://localhost:5173**
+The frontend starts at `http://localhost:5173`.
 
-### 6. You're live! 🎉
+### 6. Verify
 
-Open `http://localhost:5173`, register an account, and you'll see ₹1,00,000 in your wallet.
-
----
-
-## 📡 API Reference
-
-Full interactive documentation is available at **[/swagger-ui.html](http://localhost:8080/swagger-ui.html)** when the backend is running.
-
-Every endpoint returns a standard response envelope:
-```json
-{ "success": true,  "message": "Transfer successful", "data": { ... } }
-{ "success": false, "message": "Insufficient balance", "data": null }
-```
-
-### Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `POST` | `/api/auth/register` | ❌ | Create account + auto-seed ₹1,00,000 wallet |
-| `POST` | `/api/auth/login` | ❌ | Login → receive JWT access + refresh tokens |
-| `POST` | `/api/auth/refresh` | ❌ | Exchange refresh token for new access token |
-| `GET` | `/api/users/me` | 🔒 | Fetch own profile |
-| `PUT` | `/api/users/me` | 🔒 | Update full name |
-| `GET` | `/api/users/search?username=` | 🔒 | Search users by username |
-| `GET` | `/api/wallet/me` | 🔒 | Balance, wallet tag, currency |
-| `GET` | `/api/wallet/qr` | 🔒 | Wallet QR code as base64 PNG |
-| `POST` | `/api/transactions/send` | 🔒 | Send money: `{ receiverWalletTag, amount, pin, note }` |
-| `GET` | `/api/transactions?page=0&size=10` | 🔒 | Paginated transaction history |
-
-**Status codes:** `200` success · `201` created · `400` bad request · `401` unauthorized · `403` forbidden · `404` not found · `409` conflict · `429` rate limited · `500` server error
+Open `http://localhost:5173`, register an account, and confirm your wallet shows a balance of 1,00,000 ORB.
 
 ---
 
-## 🔒 Security Architecture
+## Running Tests
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      EVERY REQUEST                          │
-├─────────────────────────────────────────────────────────────┤
-│  Rate Limiter (Bucket4j) → 20 req/min/IP                   │
-│       ↓                                                     │
-│  CORS Filter → exact origin only, never "*"                 │
-│       ↓                                                     │
-│  JwtAuthFilter (OncePerRequestFilter)                       │
-│       ↓                                                     │
-│  Spring Security Filter Chain                               │
-│       ↓                                                     │
-│  @Valid DTO Validation                                      │
-│       ↓                                                     │
-│  Controller → Service → Repository                          │
-└─────────────────────────────────────────────────────────────┘
+Tests run against an in-memory H2 database in PostgreSQL compatibility mode. No local PostgreSQL instance is needed.
+
+```bash
+./mvnw test
 ```
 
-| Layer | Protection |
-|-------|-----------|
-| **Passwords** | BCrypt hashed — never stored, logged, or returned in responses |
-| **Transfer PIN** | Separate BCrypt hash, verified on every send, never exposed |
-| **JWT** | HS256 signed, 24h access / 7d refresh, secret ≥ 32 chars via env var |
-| **Account Lock** | Auto-locks after 5 consecutive failed logins |
-| **Rate Limiting** | Bucket4j — 20 requests/min per IP |
-| **CORS** | Locked to exact frontend origin — never `*` |
-| **Input** | `@Valid` on every request DTO, server-side validation |
-| **Logging** | `password_hash` and `transfer_pin_hash` scrubbed from all output |
-| **HTTPS** | Enforced by Railway + Vercel in production |
+On Windows:
+
+```bash
+.\mvnw.cmd test
+```
+
+Test coverage includes:
+- User registration with atomic wallet creation
+- Login, JWT generation, and token refresh
+- P2P transfer happy path with correct balance updates
+- Insufficient balance rejection
+- Self-transfer blocked
+- Invalid PIN rejection
+- Account lock after 5 failed logins
+- Input validation on all DTOs
 
 ---
 
-## 💰 P2P Transfer Flow
-
-The most critical path in the app — designed so **money can never be lost**, even on a server crash:
-
-```
-POST /api/transactions/send
- │
- ├─ 1. Validate JWT → identify sender
- ├─ 2. Verify transfer PIN (BCrypt.matches)
- ├─ 3. Look up receiver by wallet_tag
- ├─ 4. Guard: sender ≠ receiver (block self-transfer)
- ├─ 5. Guard: sender.balance ≥ amount (fail fast)
- │
- ├─ @Transactional ─────────────────────────────────┐
- │    ├─ sender.balance  -= amount      (debit)     │
- │    ├─ receiver.balance += amount     (credit)    │
- │    └─ INSERT transaction (status = SUCCESS)      │
- │                                                   │
- │    Any exception → FULL ROLLBACK                  │
- │    (no partial state — ever)                      │
- └───────────────────────────────────────────────────┘
- │
- ├─ @Async: email notification to receiver (non-blocking)
- └─ Return { success, referenceId, newBalance }
-```
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 Orb/
 ├── src/main/java/com/orb/
-│   ├── config/             # SecurityConfig · JwtConfig · CorsConfig · AsyncConfig · OpenApiConfig
-│   ├── controller/         # AuthController · UserController · WalletController · TransactionController
-│   ├── dto/                # RegisterRequest · LoginResponse · SendRequest · WalletDTO · ApiResponse<T>
-│   ├── entity/             # User · Wallet · Transaction · Notification
-│   ├── exception/          # GlobalExceptionHandler · InsufficientBalanceException · InvalidTransferException
-│   ├── mapper/             # UserMapper · WalletMapper · TransactionMapper (MapStruct)
-│   ├── repository/         # UserRepository · WalletRepository · TransactionRepository
-│   ├── security/           # JwtAuthFilter · JwtUtil · UserDetailsServiceImpl
-│   └── service/            # AuthService · WalletService · TransactionService · NotificationService
+│   ├── config/             SecurityConfig, JwtConfig, CorsConfig, AsyncConfig, OpenApiConfig
+│   ├── controller/         AuthController, UserController, WalletController, TransactionController
+│   ├── dto/                RegisterRequest, LoginResponse, SendRequest, WalletDTO, ApiResponse<T>
+│   ├── entity/             User, Wallet, Transaction, Notification
+│   ├── exception/          GlobalExceptionHandler, InsufficientBalanceException, InvalidTransferException
+│   ├── mapper/             UserMapper, WalletMapper, TransactionMapper (MapStruct, compile-time)
+│   ├── repository/         UserRepository, WalletRepository, TransactionRepository
+│   ├── security/           JwtAuthFilter, JwtUtil, UserDetailsServiceImpl
+│   └── service/            AuthService, WalletService, TransactionService, NotificationService
 │
 ├── src/main/resources/
 │   ├── application.yml
-│   └── db/migration/       # V1__create_users  V2__create_wallets  V3__create_transactions  V4__create_notifications
+│   ├── application-test.yml
+│   └── db/migration/
+│       ├── V1__create_users_table.sql
+│       ├── V2__create_wallets_table.sql
+│       ├── V3__create_transactions_table.sql
+│       └── V4__create_notifications_table.sql
 │
-├── src/test/               # JUnit 5 + Mockito (H2 in PostgreSQL mode)
-├── .github/workflows/      # CI — mvn test on every push
+├── src/test/               JUnit 5 + Mockito (H2 in PostgreSQL mode)
+├── .github/workflows/      CI — mvn test on every push to main
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── api/            # Axios instance + JWT interceptor
-│   │   ├── components/     # Navbar · BalanceCard · TransactionItem · QRModal
-│   │   ├── hooks/          # useAuth · useWallet
-│   │   ├── pages/          # Login · Register · Dashboard · Send · History · QR · Notifications · Profile
-│   │   ├── store/          # useAuthStore · useWalletStore (Zustand)
-│   │   └── utils/          # formatCurrency · formatDate
+│   │   ├── api/            Axios instance, JWT interceptor, per-feature API functions
+│   │   ├── components/     Navbar, BalanceCard, TransactionItem, QRModal
+│   │   ├── hooks/          useAuth, useWallet
+│   │   ├── pages/          Login, Register, Dashboard, Send, History, QR, Notifications, Profile
+│   │   ├── store/          useAuthStore, useWalletStore (Zustand)
+│   │   └── utils/          formatCurrency, formatDate
 │   └── package.json
 │
 ├── pom.xml
-├── mvnw / mvnw.cmd         # Maven wrapper — no global Maven install needed
+├── mvnw / mvnw.cmd
 └── README.md
 ```
 
 ---
 
-## 🧪 Running Tests
+## Database Schema
 
-Tests run against an in-memory **H2 database in PostgreSQL compatibility mode** — no local PostgreSQL needed.
+Four tables. All monetary values stored as `DECIMAL(15,2)`. UUIDs as native PostgreSQL `UUID` type.
 
-```bash
-./mvnw test
-# Windows: .\mvnw.cmd test
+```
+USERS                                WALLETS
+────────────────────────             ─────────────────────────────
+id              UUID  PK             id                UUID  PK
+email           VARCHAR(255) UQ      user_id           UUID  FK → users
+username        VARCHAR(255) UQ      balance           DECIMAL(15,2) DEFAULT 100000.00
+password_hash   TEXT                 currency          VARCHAR(10) DEFAULT 'ORB'
+full_name       VARCHAR(200)         wallet_tag        VARCHAR(64) UQ
+failed_attempts INT DEFAULT 0        transfer_pin_hash VARCHAR(255)
+is_active       BOOLEAN DEFAULT true is_locked         BOOLEAN DEFAULT false
+created_at      TIMESTAMP            created_at        TIMESTAMP
+
+
+TRANSACTIONS                         NOTIFICATIONS
+──────────────────────────────       ─────────────────────────
+id                 UUID  PK         id          UUID  PK
+sender_wallet_id   UUID  FK         user_id     UUID  FK → users
+receiver_wallet_id UUID  FK         type        VARCHAR(20)
+amount             DECIMAL(15,2)    title       VARCHAR(200)
+type               VARCHAR(20)      message     TEXT
+status             VARCHAR(20)      is_read     BOOLEAN DEFAULT false
+note               TEXT             created_at  TIMESTAMP
+reference_id       VARCHAR(64) UQ
+created_at         TIMESTAMP
 ```
 
-Test coverage includes:
-- ✅ User registration + atomic wallet creation
-- ✅ Login / JWT generation / token refresh
-- ✅ P2P transfer happy path (balances update correctly)
-- ✅ Insufficient balance rejection
-- ✅ Self-transfer blocked
-- ✅ Invalid PIN rejection
-- ✅ Account lock after 5 failed logins
-- ✅ Input validation on all DTOs
+Schema is managed by Flyway. Migrations V1 through V4 are frozen once applied. Any future schema change ships as a new migration file (V5, V6, etc.).
 
 ---
 
-## 🚢 Deployment
+## API Reference
 
-### Backend → Railway
+Full interactive documentation is available at [`/swagger-ui.html`](http://localhost:8080/swagger-ui.html) when the backend is running.
 
-1. Push repo to GitHub
-2. Connect Railway to your GitHub repo
-3. Set environment variables in Railway dashboard:
+**Standard response envelope** — every endpoint uses this:
+
+```json
+{ "success": true,  "message": "Transfer successful", "data": { ... } }
+{ "success": false, "message": "Insufficient balance", "data": null }
+```
+
+**Endpoints**
+
+| Method | Endpoint | Auth | Description |
+|---|---|:---:|---|
+| POST | `/api/auth/register` | No | Create account, auto-seed 1,00,000 wallet |
+| POST | `/api/auth/login` | No | Authenticate, return access and refresh tokens |
+| POST | `/api/auth/refresh` | No | Exchange refresh token for new access token |
+| GET | `/api/users/me` | JWT | Fetch own profile |
+| PUT | `/api/users/me` | JWT | Update full name |
+| GET | `/api/users/search?username=` | JWT | Search users by username |
+| GET | `/api/wallet/me` | JWT | Balance, wallet tag, currency |
+| GET | `/api/wallet/qr` | JWT | Wallet QR as base64 PNG |
+| POST | `/api/transactions/send` | JWT | Body: `{ receiverWalletTag, amount, pin, note }` |
+| GET | `/api/transactions?page=0&size=10` | JWT | Paginated history, filterable by type and date |
+
+**Status codes:** 200 success, 201 created, 400 bad request, 401 unauthorized, 403 forbidden, 404 not found, 409 conflict, 429 rate limited, 500 server error.
+
+---
+
+## Authentication Flow
+
+```
+1. POST /api/auth/register
+2. Server creates User + Wallet inside one @Transactional method
+3. Server returns { accessToken, refreshToken, user }
+4. Frontend stores tokens, attaches on every request:
+     Authorization: Bearer <accessToken>
+5. JwtAuthFilter (extends OncePerRequestFilter) validates the token on every protected route
+6. On 401, frontend calls POST /api/auth/refresh
+7. Gets a new accessToken, retries the original request silently
+```
+
+Access tokens expire after 24 hours. Refresh tokens expire after 7 days. The JWT secret is loaded from an environment variable and must be at least 32 characters.
+
+---
+
+## P2P Transfer Flow
+
+The most critical path in the application. Designed so that money can never be lost, even on a server crash mid-operation.
+
+```
+POST /api/transactions/send
+ |
+ |-- 1. Validate JWT, identify sender
+ |-- 2. Verify transfer PIN (BCrypt.matches vs transfer_pin_hash)
+ |-- 3. Look up receiver by wallet_tag
+ |-- 4. Guard: sender != receiver (block self-transfer)
+ |-- 5. Guard: sender.balance >= amount (fail fast with 400)
+ |
+ |-- @Transactional BEGIN
+ |      |-- sender.balance -= amount      (debit)
+ |      |-- receiver.balance += amount     (credit)
+ |      |-- INSERT transaction row (status = SUCCESS)
+ |-- @Transactional COMMIT
+ |      (any exception anywhere above causes full rollback)
+ |
+ |-- @Async: send email notification to receiver (non-blocking)
+ |-- Return { success, referenceId, newBalance }
+```
+
+---
+
+## Security
+
+| Area | Implementation |
+|---|---|
+| Passwords | BCrypt hashed. Never stored, logged, or returned in any response. |
+| Transfer PIN | Separate BCrypt hash stored on the wallet row. Verified on every transfer. Never returned in any API response. |
+| JWT | HS256 signed. 24-hour access tokens, 7-day refresh tokens. Secret loaded from environment variable, minimum 32 characters. |
+| Account lock | `failed_attempts` counter on User entity. Account locked (`is_active = false`) after 5 consecutive bad logins. |
+| Rate limiting | Bucket4j. 20 requests per minute per IP in production. |
+| CORS | Exact frontend origin only. Never `*`, especially with `allowCredentials(true)`. |
+| Input validation | `@Valid` on every request DTO. Server-side validation on all fields. |
+| Logging | `password_hash` and `transfer_pin_hash` excluded from all log output. |
+| HTTPS | Enforced by Railway and Vercel in production. |
+
+---
+
+## Engineering Decisions
+
+| Decision | Rationale |
+|---|---|
+| `BigDecimal`, never `double` | Floating-point arithmetic causes silent precision drift in currency calculations. `BigDecimal` with `DECIMAL(15,2)` guarantees exact math. BigDecimal values are always constructed from String, never from double literals. |
+| User + Wallet in one `@Transactional` | A user must never exist without a wallet, even if the server crashes mid-registration. One transaction guarantees atomicity. |
+| Debit + Credit in one `@Transactional` | A partial transfer (money debited but not credited) must be structurally impossible. Full rollback on any exception. |
+| Transfer PIN is not the login password | Separate BCrypt hash stored on the wallet row. Even if a session is hijacked, money cannot move without the PIN. |
+| `@Async` email notifications | JavaMail and SendGrid calls add 1 to 3 seconds of latency. `@Async` moves them off the request thread so the API responds instantly. |
+| `OncePerRequestFilter` for JWT | Spring's filter chain can invoke a filter more than once in some configurations. `OncePerRequestFilter` guarantees exactly one execution per request. |
+| Flyway, not Hibernate DDL | `ddl-auto: validate` ensures Hibernate never silently modifies the schema. All migrations are version-controlled SQL files. A migration that has already run is never edited. |
+| MapStruct, not manual mapping | Compile-time entity-to-DTO mapping eliminates runtime reflection overhead and catches mapping errors at build time. |
+| H2 in PostgreSQL mode for tests | Tests run fast without needing a real database, but SQL compatibility ensures test behavior matches production. |
+
+---
+
+## Deployment
+
+### Backend — Railway
+
+1. Push the repository to GitHub.
+2. Connect Railway to the GitHub repository.
+3. Set environment variables in the Railway dashboard:
    ```
    DB_USERNAME=<railway-provided>
    DB_PASSWORD=<railway-provided>
@@ -433,13 +444,13 @@ Test coverage includes:
    MAIL_PASSWORD=<sendgrid-password>
    CORS_ORIGIN=https://your-frontend.vercel.app
    ```
-4. Railway auto-detects the Maven project and deploys
+4. Railway auto-detects the Maven project and deploys.
 
-### Frontend → Vercel
+### Frontend — Vercel
 
-1. Import the `frontend/` directory in Vercel
-2. Set build command: `npm run build`
-3. Set output directory: `dist`
+1. Import the `frontend/` directory in Vercel.
+2. Set build command: `npm run build`.
+3. Set output directory: `dist`.
 4. Add environment variable:
    ```
    VITE_API_BASE_URL=https://your-backend.railway.app
@@ -447,33 +458,14 @@ Test coverage includes:
 
 ---
 
-## ⚙️ Engineering Decisions
-
-| Decision | Why |
-|----------|-----|
-| **`BigDecimal`, never `double`** | Floating-point arithmetic causes silent precision drift in currency calculations. `BigDecimal` with `DECIMAL(15,2)` is the only correct representation for money. |
-| **User + Wallet in one `@Transactional`** | A user must never exist without a wallet, even if the server crashes mid-registration. One transaction guarantees atomicity. |
-| **Debit + Credit in one `@Transactional`** | A partial transfer (money debited but not credited) must be structurally impossible. The `@Transactional` annotation guarantees full rollback on any exception. |
-| **Transfer PIN ≠ login password** | Separate BCrypt hash stored on the wallet row. Even if a session is hijacked, money can't move without the PIN. |
-| **`@Async` email notifications** | JavaMail/SendGrid calls add 1–3s of latency. `@Async` moves them off the request thread so the API responds instantly. |
-| **`OncePerRequestFilter` for JWT** | Spring's filter chain can invoke a filter more than once in some configurations. `OncePerRequestFilter` guarantees exactly one execution per request. |
-| **Flyway, not Hibernate DDL** | `ddl-auto: validate` ensures Hibernate never silently modifies the schema. All migrations are version-controlled SQL files. |
-| **MapStruct, not manual mapping** | Compile-time entity ↔ DTO mapping eliminates runtime reflection overhead and catches mapping errors at build time. |
-| **H2 in PostgreSQL mode for tests** | Tests run fast without needing a real database, but SQL compatibility ensures test behavior matches production. |
-
----
-
-## 📄 License
+## License
 
 [MIT](./LICENSE) — free to use, modify, and distribute.
 
 ---
 
 <div align="center">
-  <br/>
-  <strong>Built with ☕ and clean architecture.</strong>
-  <br/><br/>
-  If you found this useful — give it a ⭐
+  <strong>Built with clean architecture and production-grade discipline.</strong>
   <br/><br/>
   <a href="https://github.com/Mitxh13">@Mitxh13</a>
 </div>
