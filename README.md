@@ -465,7 +465,7 @@ POST /api/transactions/send
 ---
 
 <div align="center">
-  <strong>Built with clean architecture and production-grade discipline.</strong>
+  <strong>If you liked the project — give it a ⭐.</strong>
   <br/><br/>
   <a href="https://github.com/Mitxh13">@Mitxh13</a>
 </div>
