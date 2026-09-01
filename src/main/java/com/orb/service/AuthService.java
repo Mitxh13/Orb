@@ -1,11 +1,13 @@
 package com.orb.service;
 
 import com.orb.dto.*;
+import com.orb.entity.RefreshToken;
 import com.orb.entity.User;
 import com.orb.exception.AccountLockedException;
 import com.orb.exception.DuplicateResourceException;
 import com.orb.exception.ResourceNotFoundException;
 import com.orb.mapper.UserMapper;
+import com.orb.repository.RefreshTokenRepository;
 import com.orb.repository.UserRepository;
 import com.orb.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Slf4j
@@ -22,31 +27,24 @@ import java.util.UUID;
 public class AuthService {
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int LOCKOUT_MINUTES = 15;
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final WalletService walletService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final UserMapper userMapper;
 
-    /**
-     * Registers a new user AND creates their wallet in a single transaction.
-     * Rule #1: User + wallet creation is one transaction.
-     * If wallet creation fails, user creation rolls back completely.
-     */
     @Transactional
     public LoginResponse register(RegisterRequest request) {
-        // Check for duplicate email
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("Email is already registered");
         }
-
-        // Check for duplicate username
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("Username is already taken");
         }
 
-        // Create and save user
         User user = User.builder()
                 .email(request.getEmail().toLowerCase().trim())
                 .username(request.getUsername().trim())
@@ -59,103 +57,107 @@ public class AuthService {
         User savedUser = userRepository.save(user);
         log.info("User registered [id={}, username={}]", savedUser.getId(), savedUser.getUsername());
 
-        // Create wallet in SAME transaction (Rule #1)
         walletService.createDefaultWallet(savedUser, request.getTransferPin());
 
-        // Generate tokens
         String accessToken = jwtUtil.generateAccessToken(savedUser.getId(), savedUser.getUsername());
-        String refreshToken = jwtUtil.generateRefreshToken(savedUser.getId());
+        String refreshTokenStr = jwtUtil.generateRefreshToken(savedUser.getId());
+        
+        saveRefreshToken(savedUser, refreshTokenStr);
 
         return LoginResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(refreshTokenStr)
                 .user(userMapper.toDTO(savedUser))
                 .build();
     }
 
-    /**
-     * Authenticates a user by username/email and password.
-     * Tracks failed attempts and locks account after 5 failures.
-     */
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        // Find user by username or email
         User user = userRepository.findByUsernameOrEmail(request.getUsername(), request.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid username or password"));
 
-        // Check if account is locked
-        if (!user.getIsActive()) {
-            throw new AccountLockedException("Account is locked due to too many failed login attempts. Please contact support.");
+        // Check time-based lockout
+        if (user.getLockoutUntil() != null && user.getLockoutUntil().isAfter(LocalDateTime.now())) {
+            throw new AccountLockedException("Account is temporarily locked. Try again later.");
         }
 
-        // Verify password
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            // Increment failed attempts
             user.setFailedAttempts(user.getFailedAttempts() + 1);
-            log.warn("Failed login attempt for user [id={}], attempts: {}", user.getId(), user.getFailedAttempts());
-
-            // Lock account after MAX_FAILED_ATTEMPTS
             if (user.getFailedAttempts() >= MAX_FAILED_ATTEMPTS) {
-                user.setIsActive(false);
+                user.setLockoutUntil(LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES));
+                user.setFailedAttempts(0); // Reset for next time after lockout expires
+                log.warn("Account temporarily locked for user [id={}]", user.getId());
                 userRepository.save(user);
-                log.warn("Account locked for user [id={}] after {} failed attempts", user.getId(), MAX_FAILED_ATTEMPTS);
-                throw new AccountLockedException("Account has been locked due to too many failed login attempts.");
+                throw new AccountLockedException("Account locked due to too many failed attempts. Try again in 15 minutes.");
             }
-
             userRepository.save(user);
             throw new ResourceNotFoundException("Invalid username or password");
         }
 
-        // Successful login — reset failed attempts
-        if (user.getFailedAttempts() > 0) {
+        // Reset failures on success
+        if (user.getFailedAttempts() > 0 || user.getLockoutUntil() != null) {
             user.setFailedAttempts(0);
+            user.setLockoutUntil(null);
             userRepository.save(user);
         }
 
-        // Generate tokens
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
-
+        String refreshTokenStr = jwtUtil.generateRefreshToken(user.getId());
+        
+        saveRefreshToken(user, refreshTokenStr);
         log.info("User logged in [id={}, username={}]", user.getId(), user.getUsername());
 
         return LoginResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(refreshTokenStr)
                 .user(userMapper.toDTO(user))
                 .build();
     }
 
-    /**
-     * Refreshes an access token using a valid refresh token.
-     */
+    @Transactional
     public LoginResponse refresh(RefreshRequest request) {
-        String refreshToken = request.getRefreshToken();
+        String tokenStr = request.getRefreshToken();
+        
+        RefreshToken refreshTokenEntity = refreshTokenRepository.findByToken(tokenStr)
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid refresh token"));
 
-        if (!jwtUtil.validateToken(refreshToken)) {
-            throw new ResourceNotFoundException("Invalid or expired refresh token");
+        if (refreshTokenEntity.getExpiryDate().isBefore(Instant.now())) {
+            refreshTokenRepository.delete(refreshTokenEntity);
+            throw new ResourceNotFoundException("Refresh token has expired");
         }
 
-        // Ensure it's actually a REFRESH token
-        String tokenType = jwtUtil.getTokenType(refreshToken);
-        if (!"REFRESH".equals(tokenType)) {
-            throw new ResourceNotFoundException("Invalid token type — expected a refresh token");
+        if (!jwtUtil.validateToken(tokenStr) || !"REFRESH".equals(jwtUtil.getTokenType(tokenStr))) {
+            throw new ResourceNotFoundException("Invalid token signature or type");
         }
 
-        UUID userId = jwtUtil.getUserIdFromToken(refreshToken);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        if (!user.getIsActive()) {
+        User user = refreshTokenEntity.getUser();
+        
+        if (user.getLockoutUntil() != null && user.getLockoutUntil().isAfter(LocalDateTime.now())) {
             throw new AccountLockedException("Account is locked");
         }
 
-        // Issue new access token (keep same refresh token)
+        // Token Rotation: Delete old, create new
+        refreshTokenRepository.delete(refreshTokenEntity);
+        
         String newAccessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
+        String newRefreshTokenStr = jwtUtil.generateRefreshToken(user.getId());
+        
+        saveRefreshToken(user, newRefreshTokenStr);
 
         return LoginResponse.builder()
                 .accessToken(newAccessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(newRefreshTokenStr)
                 .user(userMapper.toDTO(user))
                 .build();
+    }
+    
+    private void saveRefreshToken(User user, String tokenStr) {
+        RefreshToken token = RefreshToken.builder()
+                .user(user)
+                .token(tokenStr)
+                // Assuming 7 days config
+                .expiryDate(Instant.now().plus(7, ChronoUnit.DAYS))
+                .build();
+        refreshTokenRepository.save(token);
     }
 }
