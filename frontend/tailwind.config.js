@@ -8,33 +8,24 @@ export default {
     extend: {
       colors: {
         orb: {
-          50: '#f0f8ff',
+          50:  '#f0f8ff',
           100: '#e0f0ff',
           200: '#bce0ff',
           300: '#85caff',
           400: '#47b0ff',
-          500: '#0079C1', // PayPal light blue
+          500: '#0079C1',
           600: '#005ea6',
           700: '#00457c',
-          800: '#003087', // PayPal dark blue
+          800: '#003087',
           900: '#001a4d',
         },
       },
-      animation: {
-        'draw': 'draw 0.5s ease-out forwards',
-        'fly': 'fly 1s ease-in-out forwards',
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
-      keyframes: {
-        draw: {
-          '0%': { strokeDasharray: '0, 100' },
-          '100%': { strokeDasharray: '100, 100' },
-        },
-        fly: {
-          '0%': { transform: 'translateY(0) scale(1)', opacity: 1 },
-          '50%': { transform: 'translateY(-20px) scale(1.1)', opacity: 1 },
-          '100%': { transform: 'translateY(-100px) scale(0)', opacity: 0 },
-        }
-      }
+      spacing: {
+        'safe-b': 'env(safe-area-inset-bottom, 0px)',
+      },
     },
   },
   plugins: [],

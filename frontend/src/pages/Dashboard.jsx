@@ -3,21 +3,22 @@ import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import { formatCurrency, formatDate } from '../utils/format'
 import { motion } from 'framer-motion'
-import { Send, ArrowDownLeft, QrCode, CreditCard, ChevronRight, Activity } from 'lucide-react'
+import { Send, ArrowDownLeft, QrCode, Clock, ChevronRight, Wallet, Eye, EyeOff } from 'lucide-react'
 
 export default function Dashboard() {
   const [wallet, setWallet] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [balanceHidden, setBalanceHidden] = useState(false)
 
   useEffect(() => {
     Promise.all([
       api.get('/api/wallet/me'),
-      api.get('/api/transactions?page=0&size=3')
+      api.get('/api/transactions?page=0&size=5')
     ])
     .then(([walletRes, txRes]) => {
       setWallet(walletRes.data.data)
-      setTransactions(txRes.data.data.content)
+      setTransactions(txRes.data.data?.content || [])
     })
     .catch(() => {})
     .finally(() => setLoading(false))
@@ -26,98 +27,111 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orb-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orb-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Balance Card Section */}
-      <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 text-center relative overflow-hidden">
-        {/* Decorative background blobs */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-orb-50 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orb-50 rounded-full blur-3xl"></div>
-        
+    <div className="space-y-5 sm:space-y-6 max-w-4xl mx-auto">
+      {/* === Balance Card (Gradient header like UPI apps) === */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="gradient-blue rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-white relative overflow-hidden"
+      >
+        {/* Decorative circles */}
+        <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-white/5"></div>
+        <div className="absolute -bottom-20 -left-10 w-48 h-48 rounded-full bg-white/5"></div>
+
         <div className="relative z-10">
-          <h2 className="text-gray-500 font-medium mb-2">Available Balance</h2>
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', bounce: 0.5 }}
-            className="text-5xl sm:text-6xl font-bold text-gray-900 tracking-tight"
-          >
-            {formatCurrency(wallet?.balance || 0)}
-          </motion.div>
-          <p className="text-orb-600 font-medium mt-3 bg-orb-50 inline-block px-3 py-1 rounded-full text-sm">
-            {wallet?.walletTag}
-          </p>
+          {/* Wallet tag */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-white/60" />
+              <span className="text-sm text-white/70 font-medium">{wallet?.walletTag}</span>
+            </div>
+            <button onClick={() => setBalanceHidden(!balanceHidden)} className="text-white/60 hover:text-white/90 p-1 transition-colors">
+              {balanceHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Balance */}
+          <div className="mb-1">
+            <p className="text-xs text-white/50 uppercase tracking-wider font-medium mb-1">Available Balance</p>
+            <motion.p
+              key={balanceHidden ? 'hidden' : 'visible'}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-3xl sm:text-4xl font-extrabold tracking-tight"
+            >
+              {balanceHidden ? '₹ ••••••' : formatCurrency(wallet?.balance || 0)}
+            </motion.p>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mt-10 relative z-10">
-          <Link to="/send" className="flex flex-col items-center gap-2 group">
-            <div className="w-16 h-16 rounded-full bg-orb-800 text-white flex items-center justify-center shadow-lg group-hover:bg-orb-700 group-hover:-translate-y-1 transition-all">
-              <Send className="w-6 h-6 ml-1" />
-            </div>
-            <span className="text-sm font-semibold text-gray-700">Send</span>
+        {/* Quick action buttons inside the card */}
+        <div className="flex gap-3 mt-6 relative z-10">
+          <Link to="/send" className="flex-1 bg-white/15 hover:bg-white/25 rounded-xl py-3 flex flex-col items-center gap-1.5 transition-colors active:scale-95">
+            <Send className="w-5 h-5" />
+            <span className="text-xs font-semibold">Send</span>
           </Link>
-          <Link to="/history" className="flex flex-col items-center gap-2 group">
-            <div className="w-16 h-16 rounded-full bg-orb-100 text-orb-800 flex items-center justify-center group-hover:bg-orb-200 group-hover:-translate-y-1 transition-all">
-              <Activity className="w-6 h-6" />
-            </div>
-            <span className="text-sm font-semibold text-gray-700">Activity</span>
+          <Link to="/qr" className="flex-1 bg-white/15 hover:bg-white/25 rounded-xl py-3 flex flex-col items-center gap-1.5 transition-colors active:scale-95">
+            <QrCode className="w-5 h-5" />
+            <span className="text-xs font-semibold">Scan & Pay</span>
           </Link>
-          <Link to="/qr" className="flex flex-col items-center gap-2 group">
-            <div className="w-16 h-16 rounded-full bg-orb-100 text-orb-800 flex items-center justify-center group-hover:bg-orb-200 group-hover:-translate-y-1 transition-all">
-              <QrCode className="w-6 h-6" />
-            </div>
-            <span className="text-sm font-semibold text-gray-700">Scan</span>
+          <Link to="/history" className="flex-1 bg-white/15 hover:bg-white/25 rounded-xl py-3 flex flex-col items-center gap-1.5 transition-colors active:scale-95">
+            <Clock className="w-5 h-5" />
+            <span className="text-xs font-semibold">History</span>
           </Link>
         </div>
-      </section>
+      </motion.section>
 
-      {/* Recent Activity */}
-      <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
-          <Link to="/history" className="text-orb-600 text-sm font-semibold hover:underline flex items-center">
-            View all <ChevronRight className="w-4 h-4 ml-1" />
+      {/* === Recent Activity === */}
+      <section className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100">
+        <div className="flex justify-between items-center p-4 sm:p-6 pb-0 sm:pb-0">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900">Recent Activity</h3>
+          <Link to="/history" className="text-orb-600 text-xs sm:text-sm font-semibold flex items-center hover:underline">
+            See all <ChevronRight className="w-4 h-4 ml-0.5" />
           </Link>
         </div>
-        
+
         {transactions.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-            <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">No recent transactions.</p>
-            <p className="text-sm text-gray-400 mt-1">When you send or receive money, it will show up here.</p>
+          <div className="text-center py-12 px-4">
+            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Clock className="w-6 h-6 text-gray-400" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium">No transactions yet</p>
+            <p className="text-xs text-gray-400 mt-1">Send or receive money to see your activity here.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-gray-50">
             {transactions.map((tx, idx) => {
               const isSent = tx.direction === 'SENT'
               return (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }}
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  key={tx.id} 
-                  className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+                  transition={{ delay: idx * 0.06 }}
+                  key={tx.id}
+                  className="flex items-center justify-between px-4 sm:px-6 py-3.5 hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-full ${isSent ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-600'}`}>
-                      {isSent ? <Send className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isSent ? 'bg-gray-100 text-gray-600' : 'bg-green-50 text-green-600'
+                    }`}>
+                      {isSent ? <Send className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                     </div>
-                    <div>
-                      <p className="font-bold text-gray-900 text-sm sm:text-base">
-                        {isSent ? `To ${tx.receiverWalletTag}` : `From ${tx.senderWalletTag}`}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {isSent ? tx.receiverWalletTag : tx.senderWalletTag}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">{formatDate(tx.createdAt)}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(tx.createdAt)}</p>
                     </div>
                   </div>
-                  <div className={`font-bold text-lg tracking-tight ${isSent ? 'text-gray-900' : 'text-green-600'}`}>
+                  <p className={`text-sm font-bold flex-shrink-0 ml-3 ${isSent ? 'text-gray-900' : 'text-green-600'}`}>
                     {isSent ? '-' : '+'}{formatCurrency(tx.amount)}
-                  </div>
+                  </p>
                 </motion.div>
               )
             })}
